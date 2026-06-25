@@ -1,0 +1,42 @@
+针对极为变态的小小小小小小鸡，运行这些命令，可以提高一丢丢内存
+
+1. 软件包深度卸载：
+apt-get purge -y dbus* vim* xauth bash-completion dialog xdg-user-dirs shared-mime-info publicsuffix isc-dhcp-client isc-dhcp-common net-tools ncurses-term krb5-locales libc-l10n locales libx11-* libxcb1 && apt-get autoremove -y && apt-get clean
+
+2. 物理文件强制清理：
+rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* /usr/share/locale/*
+
+3. 然后看看效果
+df -h /
+
+apt-get purge -y dbus-bin dbus-daemon dbus-session-bus-common dbus-system-bus-common isc-dhcp-client isc-dhcp-common ncurses-term net-tools krb5-locales libc-l10n locales && apt-get autoremove -y && apt-get clean
+
+apt-get purge -y vim vim-runtime vim-common xauth libx11-6 libx11-data libxcb1 libxext6 libxmuu1 bash-completion dbus dialog xdg-user-dirs shared-mime-info publicsuffix && apt-get autoremove -y && apt-get clean
+
+rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* /usr/share/locale/*
+
+apt-get purge -y libgpm2 adduser sensible-utils libfido2-1 && \
+apt-get autoremove -y && \
+apt-get clean
+
+
+安装软件后再运行
+rm -f /var/cache/apt/*.bin
+rm -rf /var/lib/apt/lists/*
+rm -rf /var/cache/apt/*.bin /var/lib/apt/lists/*
+journalctl --vacuum-time=1s
+
+rm -rf /usr/lib/x86_64-linux-gnu/perl-base/unicore
+rm -f /var/log/dpkg.log* /var/log/apt/history.log* /var/log/apt/term.log*
+rm -rf /usr/share/icons/* /usr/share/themes/*
+
+
+只能用这个方法安装singbox
+# 1. 确保在 /tmp 目录下（利用内存）
+cd /tmp
+
+# 2. 流式下载并提取，直接存入 /usr/bin/sing-box
+curl -L https://github.com/SagerNet/sing-box/releases/download/v1.10.7/sing-box-1.10.7-linux-amd64.tar.gz | tar -zxv --strip-components=1 -C /usr/bin/ sing-box-1.10.7-linux-amd64/sing-box
+
+# 3. 立即赋予权限
+chmod +x /usr/bin/sing-box
