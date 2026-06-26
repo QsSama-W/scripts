@@ -1,10 +1,11 @@
 #!/bin/sh
-# ============================================
-# Network Download Speed Test
-# Compatible with Debian/Ubuntu & Alpine Linux
-# ============================================
+# ============================================================
+#  多区域网络下载速度测试
+#  测试节点覆盖: 欧洲 / 北美 / 亚太
+#  兼容 Debian/Ubuntu & Alpine Linux
+# ============================================================
 
-# --- Colors ---
+# --- 颜色 ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -13,180 +14,172 @@ BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m'
 
-# --- Helpers ---
-info()  { echo -e "  ${CYAN}[i]${NC} $1"; }
-ok()    { echo -e "  ${GREEN}[✓]${NC} $1"; }
-warn()  { echo -e "  ${YELLOW}[!]${NC} $1"; }
-fail()  { echo -e "  ${RED}[✗]${NC} $1"; }
+ok()   { echo -e "  ${GREEN}[√]${NC} $1"; }
+fail() { echo -e "  ${RED}[×]${NC} $1"; }
 
-# --- Format bytes/s -> human readable ---
-format_speed() {
-    awk "BEGIN {
-        bps = $1 + 0
-        if (bps >= 1073741824) printf \"%.2f GB/s\", bps / 1073741824
-        else if (bps >= 1048576) printf \"%.2f MB/s\", bps / 1048576
-        else if (bps >= 1024) printf \"%.2f KB/s\", bps / 1024
-        else printf \"%.0f B/s\", bps
+fmt_speed() {
+    awk "BEGIN{
+        b=$1+0
+        if(b>=1073741824) printf \"%.2f GB/s\", b/1073741824
+        else if(b>=1048576) printf \"%.2f MB/s\", b/1048576
+        else if(b>=1024) printf \"%.2f KB/s\", b/1024
+        else printf \"%.0f B/s\", b
     }"
 }
 
-# --- Format bytes -> human readable ---
-format_bytes() {
-    awk "BEGIN {
-        b = $1 + 0
-        if (b >= 1073741824) printf \"%.2f GB\", b / 1073741824
-        else if (b >= 1048576) printf \"%.2f MB\", b / 1048576
-        else if (b >= 1024) printf \"%.2f KB\", b / 1024
+fmt_bytes() {
+    awk "BEGIN{
+        b=$1+0
+        if(b>=1073741824) printf \"%.2f GB\", b/1073741824
+        else if(b>=1048576) printf \"%.2f MB\", b/1048576
+        else if(b>=1024) printf \"%.2f KB\", b/1024
         else printf \"%.0f B\", b
     }"
 }
 
-# --- Install curl if missing ---
+fmt_mbps() {
+    awk "BEGIN{ printf \"%.1f\", $1 * 8 / 1000000 }"
+}
+
+# --- 安装 curl ---
 ensure_curl() {
     if command -v curl >/dev/null 2>&1; then
-        local ver
-        ver=$(curl --version 2>/dev/null | head -1 | awk '{print $2}')
-        ok "curl ${ver} found"
+        ok "已检测到 curl $(curl --version 2>/dev/null | head -1 | awk '{print $2}')"
         return 0
     fi
-
-    warn "curl not found, attempting to install..."
-
+    echo -e "  ${YELLOW}[!]${NC} 未找到 curl，正在自动安装..."
     if command -v apt-get >/dev/null 2>&1; then
         apt-get update -qq >/dev/null 2>&1
         apt-get install -y -qq curl >/dev/null 2>&1
     elif command -v apk >/dev/null 2>&1; then
         apk add --no-cache curl >/dev/null 2>&1
     else
-        fail "Cannot detect package manager (apt/apk). Please install curl manually."
+        fail "无法识别包管理器，请手动安装 curl"
         exit 1
     fi
-
-    if command -v curl >/dev/null 2>&1; then
-        ok "curl installed successfully"
-    else
-        fail "Failed to install curl"
-        exit 1
-    fi
+    command -v curl >/dev/null 2>&1 && ok "curl 安装成功" || { fail "curl 安装失败"; exit 1; }
 }
 
-# --- Single download test ---
-# $1 = label, $2 = primary url, $3 = fallback url
-test_download() {
-    local label="$1"
-    local url="$2"
-    local fallback="$3"
+# --- 单次下载测试 ---
+# 参数: $1=名称 $2=主地址 $3=备用地址
+dl_test() {
+    local name="$1" url="$2" alt="$3"
 
-    echo ""
-    echo -e "  ${BOLD}▸ Test: ${label}${NC}"
+    for u in "$url" "$alt"; do
+        [ -z "$u" ] && continue
 
-    # Try primary URL first, fallback if it fails
-    for mirror in "$url" "$fallback"; do
-        [ -z "$mirror" ] && continue
-
-        echo -e "    ${DIM}Source: ${mirror}${NC}"
-        echo -ne "    Downloading... "
-
-        local result
-        result=$(curl -o /dev/null -s -S \
+        local r
+        r=$(curl -o /dev/null -sS \
             -w "%{time_total} %{size_download} %{speed_download}" \
-            --connect-timeout 10 \
-            --max-time 180 \
-            -L -f "$mirror" 2>&1)
+            --connect-timeout 10 --max-time 300 -L -f "$u" 2>&1)
 
-        local curl_exit=$?
+        [ $? -ne 0 ] || [ -z "$r" ] && continue
 
-        if [ $curl_exit -ne 0 ] || [ -z "$result" ]; then
-            echo -e "${RED}FAILED${NC}"
-            warn "Mirror unreachable, trying next..."
-            continue
-        fi
+        local t s v
+        t=$(echo "$r" | awk '{print $1}')
+        s=$(echo "$r" | awk '{print $2}')
+        v=$(echo "$r" | awk '{print $3}')
 
-        local time_total size_bytes speed_bps
-        time_total=$(echo "$result" | awk '{print $1}')
-        size_bytes=$(echo "$result" | awk '{print $2}')
-        speed_bps=$(echo "$result"  | awk '{print $3}')
+        [ -z "$t" ] || [ "$t" = "0" ] || [ "$t" = "0.000000" ] && continue
+        [ -z "$v" ] || [ "$v" = "0" ] && continue
 
-        # Validate
-        if [ -z "$time_total" ] || [ "$time_total" = "0" ] || [ "$time_total" = "0.000000" ]; then
-            echo -e "${RED}FAILED${NC}"
-            warn "Invalid timing data, trying next mirror..."
-            continue
-        fi
-
-        if [ -z "$speed_bps" ] || [ "$speed_bps" = "0" ]; then
-            echo -e "${RED}FAILED${NC}"
-            warn "No data received, trying next mirror..."
-            continue
-        fi
-
-        local size_display speed_display
-        size_display=$(format_bytes "$size_bytes")
-        speed_display=$(format_speed "$speed_bps")
-
-        echo -e "${GREEN}Done${NC}"
-        echo -e "    Downloaded : ${BOLD}${size_display}${NC} in ${BOLD}${time_total}s${NC}"
-        echo -e "    Speed      : ${GREEN}${BOLD}${speed_display}${NC}"
+        printf "    ${BOLD}%-34s${NC} ${GREEN}%-12s${NC} %s  (%s / %ss)\n" \
+            "$name" "$(fmt_speed "$v")" "$(fmt_mbps "$v") Mbps" \
+            "$(fmt_bytes "$s")" "$t"
         return 0
     done
 
-    fail "All mirrors failed for ${label}"
+    printf "    ${BOLD}%-34s${NC} ${RED}%-12s${NC}\n" "$name" "失败"
     return 1
 }
 
-# ============================================================
-#  Main
-# ============================================================
+# ================================================================
+#  主程序
+# ================================================================
 echo ""
-echo -e "${CYAN}┌──────────────────────────────────────────────┐${NC}"
-echo -e "${CYAN}│${NC}          ${BOLD}Network Download Speed Test${NC}              ${CYAN}│${NC}"
-echo -e "${CYAN}│${NC}        ${DIM}Debian / Alpine Compatible${NC}                  ${CYAN}│${NC}"
-echo -e "${CYAN}└──────────────────────────────────────────────┘${NC}"
+echo -e "${CYAN}╔════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║${NC}          ${BOLD}多区域网络下载速度测试${NC}                         ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}     ${DIM}测试节点覆盖: 欧洲 / 北美 / 亚太${NC}                     ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}     ${DIM}每个节点下载 100MB 文件${NC}                             ${CYAN}║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# ---- System Info ----
-echo -e "${BOLD}System Information${NC}"
+# ---- 系统信息 ----
+echo -e "${BOLD}系统信息${NC}"
 echo -e "${DIM}──────────────────────────────────────────────${NC}"
 if [ -f /etc/os-release ]; then
-    # shellcheck disable=SC1091
     . /etc/os-release
-    echo -e "  OS     : ${PRETTY_NAME:-${NAME:-Unknown} ${VERSION_ID:-}}"
+    echo -e "  操作系统 : ${PRETTY_NAME:-${NAME:-未知} ${VERSION_ID:-}}"
 else
-    echo -e "  OS     : $(uname -srm)"
+    echo -e "  操作系统 : $(uname -srm)"
 fi
-echo -e "  Kernel : $(uname -r)"
-echo -e "  Host   : $(hostname 2>/dev/null || echo 'unknown')"
-
-echo -ne "  Public : "
-curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo "(unable to retrieve)"
-
-echo ""
+echo -e "  内核版本 : $(uname -r)"
+echo -ne "  公网 IP  : "
+MYIP=$(curl -s --max-time 5 https://ifconfig.me 2>/dev/null)
+echo "${MYIP:-（获取失败）}"
 echo ""
 
-# ---- Dependencies ----
-echo -e "${BOLD}Dependencies${NC}"
+# ---- 依赖 ----
+echo -e "${BOLD}依赖检查${NC}"
 echo -e "${DIM}──────────────────────────────────────────────${NC}"
 ensure_curl
-
-echo ""
 echo ""
 
-# ---- Speed Tests ----
-echo -e "${BOLD}Download Speed Tests${NC}"
+PASS=0; FAIL=0
+
+# ======================== 欧洲 (2/4) ========================
+echo -e "${BOLD}━━━ 欧洲节点 (Europe) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${DIM}节点位于欧洲，测试到欧洲方向的带宽${NC}"
+echo ""
+
+dl_test "Hetzner 德国 (Falkenstein)" \
+    "https://speed.hetzner.de/100MB.bin" \
+    "http://speed.hetzner.de/100MB.bin" \
+    && PASS=$((PASS+1)) || FAIL=$((FAIL+1))
+
+dl_test "Tele2 欧洲 (Anycast 多地)" \
+    "http://speedtest.tele2.net/100MB.zip" \
+    "https://speedtest.tele2.net/100MB.zip" \
+    && PASS=$((PASS+1)) || FAIL=$((FAIL+1))
+
+echo ""
+
+# ======================== 北美 (3/4) ========================
+echo -e "${BOLD}━━━ 北美节点 (North America) ━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${DIM}节点位于加拿大魁北克，测试跨大西洋链路${NC}"
+echo ""
+
+dl_test "OVH 加拿大 (Beauharnois, QC)" \
+    "http://proof.ovh.ca/files/100Mb.dat" \
+    "https://proof.ovh.ca/files/100Mb.dat" \
+    && PASS=$((PASS+1)) || FAIL=$((FAIL+1))
+
+echo ""
+
+# ======================== 亚太 (4/4) ========================
+echo -e "${BOLD}━━━ 亚太节点 (Asia-Pacific) ━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${DIM}节点位于新加坡，测试到亚太方向的链路${NC}"
+echo ""
+
+dl_test "OVH 新加坡 (Singapore)" \
+    "http://proof.ovh.sg/files/100Mb.dat" \
+    "https://proof.ovh.sg/files/100Mb.dat" \
+    && PASS=$((PASS+1)) || FAIL=$((FAIL+1))
+
+echo ""
+
+# ======================== 汇总 ========================
 echo -e "${DIM}──────────────────────────────────────────────${NC}"
-
-# 10 MB test
-test_download "10 MB" \
-    "http://speedtest.tele2.net/10MB.zip" \
-    "https://speed.hetzner.de/10MB.bin"
-
-# 50 MB test
-test_download "50 MB" \
-    "http://speedtest.tele2.net/50MB.zip" \
-    "https://speed.hetzner.de/50MB.bin"
-
-echo ""
+echo -e "  完成: ${GREEN}${PASS}${NC} 个成功  |  失败: ${RED}${FAIL}${NC} 个"
 echo -e "${DIM}──────────────────────────────────────────────${NC}"
-echo -e "${DIM}Note: Actual speed depends on network path, server load,${NC}"
-echo -e "${DIM}and time of day. Results show download throughput only.${NC}"
+echo -e ""
+echo -e "  ${BOLD}结果解读:${NC}"
+echo -e "  ${DIM}1. 同区域多节点速度接近 → 该方向链路稳定${NC}"
+echo -e "  ${DIM}2. 欧洲速度远快于其他区域 → 服务器位于欧洲${NC}"
+echo -e "  ${DIM}3. 北美/亚太速度差异大 → 国际出口带宽有限${NC}"
+echo -e "  ${DIM}4. 所有区域速度接近 → 优质国际线路${NC}"
+echo -e ""
+echo -e "  ${DIM}注: 测试为 服务器→远程节点 方向下载，反映双向链路质量${NC}"
+echo -e "  ${DIM}注: 100MB 文件可让 TCP 窗口充分打开，结果最接近真实带宽${NC}"
+echo -e "  ${DIM}注: 亚太节点如失败不影响其他区域，可改用 iperf3 补充测试${NC}"
 echo ""
