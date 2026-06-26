@@ -17,6 +17,7 @@
 | `v6set.sh` | IPv6 地址管理工具 |
 | `zzj-v2.sh` | Realm 端口转发管理 |
 | `update13.sh` | Debian 12 升级到 Debian 13 (Trixie) |
+| `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
 
 ## 一键安装
 
@@ -80,4 +81,11 @@ wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/zzj-v2.sh?t=$R
 需要 bash：
 ```bash
 apt update && apt install -y wget && wget -O - https://raw.githubusercontent.com/QsSama-W/scripts/main/update13.sh?t=$RANDOM | bash
+```
+
+### 纯V6机器配置NAT64 DNS
+
+需要 bash：
+```bash
+wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/v6dns.sh?t=$RANDOM | bash
 ```
