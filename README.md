@@ -91,3 +91,10 @@ apt update && apt install -y wget && wget -O update13.sh "https://raw.githubuser
 ```bash
 wget -O v6dns.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/v6dns.sh?t=$RANDOM" && bash v6dns.sh
 ```
+
+### 下载速度测试
+
+需要 bash：
+```bash
+wget -O speed-test.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/speed-test.sh?t=$RANDOM" && bash speed-test.sh
+```
