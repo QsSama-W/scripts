@@ -16,6 +16,7 @@
 | `open_v6_port.sh` | LXC/LXD 开放 IPv6 端口 |
 | `v6set.sh` | IPv6 地址管理工具 |
 | `zzj-v2.sh` | Realm 端口转发管理 |
+| `update13.sh` | Debian 12 升级到 Debian 13 (Trixie) |
 
 ## 一键安装
 
@@ -72,4 +73,11 @@ wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/v6set.sh?t=$RA
 需要 bash：
 ```bash
 wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/zzj-v2.sh?t=$RANDOM | bash
+```
+
+### Debian 12 升级到 Debian 13
+
+需要 bash：
+```bash
+apt update && apt install -y wget && wget -O - https://raw.githubusercontent.com/QsSama-W/scripts/main/update13.sh?t=$RANDOM | bash
 ```
