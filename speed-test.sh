@@ -2,7 +2,7 @@
 # ============================================================
 #  多区域网络下载速度测试
 #  档位: 10MB / 100MB / 1GB
-#  节点: Cloudflare / Hetzner / DataPacket / Tele2 / OVH
+#  节点: Cloudflare / DataPacket / Tele2 / OVH
 #  兼容 Debian/Ubuntu & Alpine Linux
 # ============================================================
 
@@ -30,7 +30,7 @@ ensure_curl() {
     elif command -v apk >/dev/null 2>&1; then
         apk add --no-cache curl >/dev/null 2>&1
     fi
-    command -v curl >/dev/null 2>&1 && echo -e "  ${GREEN}[√]${NC} curl 已安装" || { echo -e "  ${RED}[×]${NC} 安装失败"; exit 1; }
+    command -v curl >/dev/null 2>&1 && echo -e "  ${GREEN}[√]${NC} curl 已安装" || { echo -e "  ${RED}[×]${NC} 安装失败，请手动安装 curl"; exit 1; }
 }
 
 dl_test() {
@@ -39,12 +39,14 @@ dl_test() {
     r=$(curl -o /dev/null -sS -w "%{time_total} %{size_download} %{speed_download}" \
         --connect-timeout 10 --max-time 600 -L -f "$url" 2>&1)
     if [ $? -ne 0 ] || [ -z "$r" ]; then
-        printf "    ${BOLD}%-36s${NC} ${RED}失败${NC}\n" "$name"; return 1
+        printf "    ${BOLD}%-36s${NC} ${RED}失败${NC}\n" "$name"
+        return 1
     fi
     local t s v
     t=$(echo "$r"|awk '{print $1}'); s=$(echo "$r"|awk '{print $2}'); v=$(echo "$r"|awk '{print $3}')
     if [ -z "$t" ] || [ "$t" = "0" ] || [ "$t" = "0.000000" ] || [ -z "$v" ] || [ "$v" = "0" ]; then
-        printf "    ${BOLD}%-36s${NC} ${RED}失败${NC}\n" "$name"; return 1
+        printf "    ${BOLD}%-36s${NC} ${RED}失败${NC}\n" "$name"
+        return 1
     fi
     printf "    ${BOLD}%-36s${NC} ${GREEN}%-12s${NC} %s  (%s / %ss)\n" \
         "$name" "$(fmt_speed "$v")" "$(fmt_mbps "$v") Mbps" "$(fmt_bytes "$s")" "$t"
@@ -55,19 +57,22 @@ run_round() {
     local pass=0 fail=0
 
     echo ""
-    echo -e "${CYAN}===[ ${BOLD}测试文件: ${mb} MB${NC}${CYAN} ]===${NC}"
+    echo -e "────────────────────────────────────────────────"
+    echo -e "  ${BOLD}测试文件大小: ${mb} MB${NC}"
+    echo -e "────────────────────────────────────────────────"
 
-    echo -e "\n  ${BOLD}基准${NC}"
-    echo -e "  ${DIM}──────────────────────────────────${NC}"
-    dl_test "Cloudflare (全球最近节点)" \
-        "https://speed.cloudflare.com/__down?bytes=${cf_bytes}" \
-        && pass=$((pass+1)) || fail=$((fail+1))
+    # 基准 (仅 10MB，CF __down 接口大文件受限)
+    if [ "$mb" = "10" ]; then
+        echo -e "\n  ${BOLD}基准${NC}"
+        echo -e "  ${DIM}──────────────────────────────────${NC}"
+        dl_test "Cloudflare (全球最近节点)" \
+            "https://speed.cloudflare.com/__down?bytes=${cf_bytes}" \
+            && pass=$((pass+1)) || fail=$((fail+1))
+    fi
 
+    # 欧洲
     echo -e "\n  ${BOLD}欧洲 (Europe)${NC}"
     echo -e "  ${DIM}──────────────────────────────────${NC}"
-    dl_test "Hetzner 德国纽伦堡" \
-        "http://speed.hetzner.de/${mb}MB.bin" \
-        && pass=$((pass+1)) || fail=$((fail+1))
     dl_test "Tele2 瑞典 Stockholm" \
         "http://speedtest.tele2.net/${mb}MB.zip" \
         && pass=$((pass+1)) || fail=$((fail+1))
@@ -75,6 +80,7 @@ run_round() {
         "http://par.download.datapacket.com/${mb}mb.bin" \
         && pass=$((pass+1)) || fail=$((fail+1))
 
+    # 北美
     echo -e "\n  ${BOLD}北美 (North America)${NC}"
     echo -e "  ${DIM}──────────────────────────────────${NC}"
     dl_test "OVH 美西俄勒冈" \
@@ -87,6 +93,7 @@ run_round() {
         "http://ash.download.datapacket.com/${mb}mb.bin" \
         && pass=$((pass+1)) || fail=$((fail+1))
 
+    # 亚太
     echo -e "\n  ${BOLD}亚太 (Asia-Pacific)${NC}"
     echo -e "  ${DIM}──────────────────────────────────${NC}"
     dl_test "DataPacket 新加坡" \
@@ -108,9 +115,10 @@ run_round() {
 # ================================================================
 
 echo ""
-echo -e "${BOLD}===== 多区域网络下载速度测试 =====${NC}"
-echo -e "${DIM}节点: Cloudflare / Hetzner / DataPacket / Tele2 / OVH${NC}"
-echo -e "${DIM}区域: 欧洲 · 北美 · 亚太    档位: 10 / 100 / 1000 MB${NC}"
+echo -e "══════════════════════════════════════════════════"
+echo -e "  ${BOLD}多区域网络下载速度测试${NC}"
+echo -e "  ${DIM}欧洲 · 北美 · 亚太    10 / 100 / 1000 MB${NC}"
+echo -e "══════════════════════════════════════════════════"
 
 echo -e "\n${BOLD}系统信息${NC}"
 echo -e "${DIM}──────────────────────────────────────────${NC}"
@@ -133,7 +141,7 @@ echo ""
 echo -e "  ${BOLD}1${NC})  ${GREEN}10 MB${NC}     快速测试，几秒~几十秒完成"
 echo -e "  ${BOLD}2${NC})  ${YELLOW}100 MB${NC}    标准测试，各节点均有文件"
 echo -e "  ${BOLD}3${NC})  ${CYAN}1 GB${NC}      精确测试，最接近真实带宽"
-echo -e "  ${BOLD}4${NC})  ${BOLD}全部测试${NC}   10M -> 100M -> 1G 依次测试"
+echo -e "  ${BOLD}4${NC})  ${BOLD}全部测试${NC}   10M → 100M → 1G 依次测试"
 echo ""
 printf "  请输入选项 [1-4]: "
 read -r choice
@@ -155,9 +163,9 @@ for mb in $ROUNDS; do
 done
 
 echo ""
-echo -e "${CYAN}=====================================${NC}"
+echo -e "══════════════════════════════════════════════════"
 echo -e "  ${BOLD}换算${NC}: 1 MB/s = 8 Mbps (例: 12.5 MB/s = 100 Mbps)"
-echo -e "  ${BOLD}规律${NC}: 同方向多节点速度一致 -> 链路稳定"
-echo -e "        欧洲快 / 亚太慢 -> 服务器在欧洲方向"
+echo -e "  ${BOLD}规律${NC}: 同方向多节点速度一致 → 链路稳定"
+echo -e "        欧洲快 / 亚太慢 → 服务器在欧洲方向"
 echo -e "        1GB 结果最接近真实带宽"
 echo ""
