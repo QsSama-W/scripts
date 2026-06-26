@@ -21,71 +21,73 @@
 
 ## 一键安装
 
+## 一键安装
+
 ### BBR 启用
 
 Alpine / Debian 通用：
 ```bash
-wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/bbr.sh?t=$RANDOM | sh
+wget -O bbr.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/bbr.sh?t=$RANDOM" && bash bbr.sh
 ```
 
 ### 修改主机名
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/hostname.sh?t=$RANDOM | sh
+wget -O hostname.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/hostname.sh?t=$RANDOM" && bash hostname.sh
 ```
 
 ### 安装 DDNS-GO
 
 需要 bash：
 ```bash
-wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/install_ddns_go.sh?t=$RANDOM | bash
+wget -O install_ddns_go.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/install_ddns_go.sh?t=$RANDOM" && bash install_ddns_go.sh
 ```
 
 ### 安装 sing-box（多协议版）
 
 支持 Shadowsocks / Hysteria2 / TUIC / VLESS Reality，需要 bash：
 ```bash
-wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/install-singbox-lite.sh?t=$RANDOM | bash
+wget -O install-singbox-lite.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/install-singbox-lite.sh?t=$RANDOM" && bash install-singbox-lite.sh
 ```
 
 ### 安装 sing-box（带 SANs 版本）
 
 与上一版区别在于自签证书带 SANs 扩展，需要 bash：
 ```bash
-wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/install-singbox-lite-SANs.sh?t=$RANDOM | bash
+wget -O install-singbox-lite-SANs.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/install-singbox-lite-SANs.sh?t=$RANDOM" && bash install-singbox-lite-SANs.sh
 ```
 
 ### LXC/LXD 开放 IPv6 端口
 
 需要 bash：
 ```bash
-wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/open_v6_port.sh?t=$RANDOM | bash
+wget -O open_v6_port.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/open_v6_port.sh?t=$RANDOM" && bash open_v6_port.sh
 ```
 
 ### IPv6 地址管理
 
 需要 bash：
 ```bash
-wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/v6set.sh?t=$RANDOM | bash
+wget -O v6set.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/v6set.sh?t=$RANDOM" && bash v6set.sh
 ```
 
 ### Realm 端口转发
 
 需要 bash：
 ```bash
-wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/zzj-v2.sh?t=$RANDOM | bash
+wget -O zzj-v2.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/zzj-v2.sh?t=$RANDOM" && bash zzj-v2.sh
 ```
 
 ### Debian 12 升级到 Debian 13
 
 需要 bash：
 ```bash
-apt update && apt install -y wget && wget -O - https://raw.githubusercontent.com/QsSama-W/scripts/main/update13.sh?t=$RANDOM | bash
+apt update && apt install -y wget && wget -O update13.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/update13.sh?t=$RANDOM" && bash update13.sh
 ```
 
 ### 纯V6机器配置NAT64 DNS
 
 需要 bash：
 ```bash
-wget -qO- https://raw.githubusercontent.com/QsSama-W/scripts/main/v6dns.sh?t=$RANDOM | bash
+wget -O v6dns.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/v6dns.sh?t=$RANDOM" && bash v6dns.sh
 ```
