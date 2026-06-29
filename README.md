@@ -78,6 +78,13 @@ wget -O v6set.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/v6set.
 wget -O zzj-v2.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/zzj-v2.sh?t=$RANDOM" && bash zzj-v2.sh
 ```
 
+### Debian 11 升级到 Debian 12
+
+需要 bash：
+```bash
+apt update && apt install -y wget && wget -O update12.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/update12.sh?t=$RANDOM" && bash update12.sh
+```
+
 ### Debian 12 升级到 Debian 13
 
 需要 bash：
