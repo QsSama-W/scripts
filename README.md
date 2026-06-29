@@ -105,3 +105,10 @@ wget -O v6dns.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/v6dns.
 ```bash
 wget -O speed-test.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/speed-test.sh?t=$RANDOM" && bash speed-test.sh
 ```
+
+### 挂载数据盘到/www
+
+需要 bash：
+```bash
+wget -O mount_www.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/mount_www.sh?t=$RANDOM" && bash mount_www.sh
+```
