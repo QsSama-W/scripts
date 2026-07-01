@@ -57,20 +57,19 @@ apt update -o Acquire::Check-Valid-Until=false
 apt upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -o Acquire::Check-Valid-Until=false
 apt full-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -o Acquire::Check-Valid-Until=false
 
-# 5. 替换源为 USTC Bookworm 源
+# 5. 替换源为 Bookworm 官方源
 # 注意：Bookworm 起 non-free-firmware 独立为一个组件，需额外添加
-echo "[Step 3/6] 正在将源替换为 USTC (Bookworm)..."
+echo "[Step 3/6] 正在将源替换为 Bookworm..."
 
 cat > /etc/apt/sources.list <<'EOF'
-# 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
-deb https://mirrors.ustc.edu.cn/debian/ bookworm main contrib non-free non-free-firmware
-# deb-src https://mirrors.ustc.edu.cn/debian/ bookworm main contrib non-free non-free-firmware
+deb http://deb.debian.org/debian/ bookworm main contrib non-free non-free-firmware
+# deb-src http://deb.debian.org/debian/ bookworm main contrib non-free non-free-firmware
 
-deb https://mirrors.ustc.edu.cn/debian/ bookworm-updates main contrib non-free non-free-firmware
-# deb-src https://mirrors.ustc.edu.cn/debian/ bookworm-updates main contrib non-free non-free-firmware
+deb http://deb.debian.org/debian/ bookworm-updates main contrib non-free non-free-firmware
+# deb-src http://deb.debian.org/debian/ bookworm-updates main contrib non-free non-free-firmware
 
-deb https://mirrors.ustc.edu.cn/debian-security bookworm-security main contrib non-free non-free-firmware
-# deb-src https://mirrors.ustc.edu.cn/debian-security bookworm-security main contrib non-free non-free-firmware
+deb http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
+# deb-src http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
 EOF
 
 echo "源替换完成。"
