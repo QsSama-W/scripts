@@ -4,6 +4,7 @@
 # Debian 11 (Bullseye) to Debian 12 (Bookworm) Upgrade Script (Unattended)
 # Author: QsSama
 # apt update && apt install -y wget && wget -O update12.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/update12.sh?t=$RANDOM" && bash update12.sh
+# 注意：archive.debian.org 在部分地区无法访问，脚本内已替换为阿里云归档镜像
 # ==========================================
 
 # 定义日志文件位置
@@ -42,9 +43,9 @@ export DEBIAN_FRONTEND=noninteractive
 echo "[Step 1/6] 修复 Bullseye 归档源..."
 
 cat > /etc/apt/sources.list <<'EOF'
-# Bullseye 已归档，指向 archive.debian.org
-deb http://archive.debian.org/debian/ bullseye main contrib non-free
-deb http://archive.debian.org/debian/ bullseye-updates main contrib non-free
+# Bullseye 已归档，指向阿里云归档镜像（archive.debian.org 在部分地区无法访问）
+deb https://mirrors.aliyun.com/debian-archive/debian/ bullseye main contrib non-free
+deb https://mirrors.aliyun.com/debian-archive/debian/ bullseye-updates main contrib non-free
 EOF
 
 echo "源已切换为归档地址。"
@@ -57,9 +58,9 @@ apt update -o Acquire::Check-Valid-Until=false
 apt upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -o Acquire::Check-Valid-Until=false
 apt full-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -o Acquire::Check-Valid-Until=false
 
-# 5. 替换源为 Bookworm 官方源
+# 5. 替换源为 USTC Bookworm 源
 # 注意：Bookworm 起 non-free-firmware 独立为一个组件，需额外添加
-echo "[Step 3/6] 正在将源替换为 Bookworm..."
+echo "[Step 3/6] 正在将源替换为 USTC (Bookworm)..."
 
 cat > /etc/apt/sources.list <<'EOF'
 deb http://deb.debian.org/debian/ bookworm main contrib non-free non-free-firmware

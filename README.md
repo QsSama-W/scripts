@@ -85,6 +85,7 @@ wget -O zzj-v2.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/zzj-v
 apt update && apt install -y wget && wget -O update12.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/update12.sh?t=$RANDOM" && bash update12.sh
 ```
 
+
 ### Debian 12 升级到 Debian 13
 
 需要 bash：
