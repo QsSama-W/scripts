@@ -42,6 +42,9 @@ export DEBIAN_FRONTEND=noninteractive
 # 3. 修复 Bullseye 归档源（已 LTS 过期，需要指向 archive.debian.org）
 echo "[Step 1/6] 修复 Bullseye 归档源..."
 
+# 清理 sources.list.d 下的其他源文件，避免干扰
+rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources
+
 cat > /etc/apt/sources.list <<'EOF'
 # Bullseye 已归档，指向阿里云归档镜像（archive.debian.org 在部分地区无法访问）
 deb https://mirrors.aliyun.com/debian-archive/debian/ bullseye main contrib non-free
