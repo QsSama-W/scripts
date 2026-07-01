@@ -32,10 +32,10 @@ fi
 
 echo "检测到系统: $PRETTY_NAME"
 
-# 获取清理前磁盘使用情况
-echo ""
-echo "清理前磁盘使用情况:"
-df -h / | tail -1
+# 记录清理前磁盘使用情况
+BEFORE_USED=$(df -h / | tail -1 | awk '{print $3}')
+BEFORE_AVAIL=$(df -h / | tail -1 | awk '{print $4}')
+BEFORE_PCT=$(df -h / | tail -1 | awk '{print $5}')
 
 clean_debian() {
     echo ""
@@ -118,6 +118,7 @@ echo "=========================================="
 echo "清理完成！"
 echo "结束时间: $(date)"
 echo ""
-echo "清理后磁盘使用情况:"
-df -h / | tail -1
+echo "磁盘使用情况对比:"
+echo "  清理前: 已用 $BEFORE_USED / 可用 $BEFORE_AVAIL ($BEFORE_PCT)"
+echo "  清理后: 已用 $(df -h / | tail -1 | awk '{print $3}') / 可用 $(df -h / | tail -1 | awk '{print $4}') ($(df -h / | tail -1 | awk '{print $5}'))"
 echo "=========================================="
