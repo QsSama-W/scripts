@@ -18,6 +18,7 @@
 | `zzj-v2.sh` | Realm 端口转发管理 |
 | `update13.sh` | Debian 12 升级到 Debian 13 (Trixie) |
 | `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
+| `cleanup.sh` | Debian/Alpine 系统垃圾清理 |
 
 ## 一键安装
 
@@ -112,4 +113,11 @@ wget -O speed-test.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/s
 需要 bash：
 ```bash
 wget -O mount_www.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/mount_www.sh?t=$RANDOM" && bash mount_www.sh
+```
+
+### 系统垃圾清理
+
+Debian / Alpine 通用，需要 bash：
+```bash
+wget -O cleanup.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/cleanup.sh?t=$RANDOM" && bash cleanup.sh
 ```
