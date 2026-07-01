@@ -42,7 +42,7 @@ echo "内存大小: ${TOTAL_MEM}MB"
 
 if [ "$TOTAL_MEM" -lt 950 ]; then
   echo ""
-  echo "错误: 内存不足，更新最低要求 950MB"
+  echo "错误: 内存不足，更新最低要求 1GB"
   echo "当前内存: ${TOTAL_MEM}MB"
   exit 1
 fi
@@ -54,7 +54,7 @@ echo "可用磁盘: ${DISK_AVAIL}G"
 
 if [ "$DISK_AVAIL" -lt 9 ]; then
   echo ""
-  echo "错误: 磁盘空间不足，更新最低要求 9GB"
+  echo "错误: 磁盘空间不足，更新最低要求 10GB"
   echo "当前可用: ${DISK_AVAIL}GB"
   exit 1
 fi

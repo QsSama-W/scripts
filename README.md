@@ -125,7 +125,7 @@ wget -O cleanup.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/clea
 
 ### Debian 13 系统更新
 
-需要 bash（自动检查内存≥950M、磁盘≥9G，更新完自动重启）：
+需要 bash（自动检查内存≥1G、磁盘≥10G，更新完自动重启）：
 ```bash
 wget -O upgrade-debian.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/upgrade-debian.sh?t=$RANDOM" && bash upgrade-debian.sh
 ```
