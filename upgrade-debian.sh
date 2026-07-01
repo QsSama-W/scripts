@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # ==========================================
-# Debian 13 (Trixie) 小版本升级脚本
+# Debian 13 (Trixie) 系统更新脚本
 # 检查内存和磁盘，执行系统更新
 # Author: QsSama
 # ==========================================
 
-LOG_FILE="/var/log/debian13_upgrade.log"
+LOG_FILE="/var/log/debian13_update.log"
 
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "=========================================="
-echo "Debian 13 小版本升级程序"
+echo "Debian 13 系统更新程序"
 echo "开始时间: $(date)"
 echo "=========================================="
 
@@ -42,7 +42,7 @@ echo "内存大小: ${TOTAL_MEM}MB"
 
 if [ "$TOTAL_MEM" -lt 950 ]; then
   echo ""
-  echo "错误: 内存不足，升级最低要求 950MB"
+  echo "错误: 内存不足，更新最低要求 950MB"
   echo "当前内存: ${TOTAL_MEM}MB"
   exit 1
 fi
@@ -54,7 +54,7 @@ echo "可用磁盘: ${DISK_AVAIL}G"
 
 if [ "$DISK_AVAIL" -lt 9 ]; then
   echo ""
-  echo "错误: 磁盘空间不足，升级最低要求 9GB"
+  echo "错误: 磁盘空间不足，更新最低要求 9GB"
   echo "当前可用: ${DISK_AVAIL}GB"
   exit 1
 fi
