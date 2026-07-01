@@ -80,14 +80,8 @@ apt clean
 
 echo ""
 echo "=========================================="
-echo "升级完成！"
+echo "更新完成！"
 echo "结束时间: $(date)"
 echo "当前版本: $(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2)"
+echo "建议立即重启: reboot"
 echo "=========================================="
-echo ""
-for i in 5 4 3 2 1; do
-  echo -ne "\r${i}秒后自动重启..."
-  sleep 1
-done
-echo -e "\n正在重启..."
-reboot
