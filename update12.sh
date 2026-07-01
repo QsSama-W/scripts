@@ -3,8 +3,7 @@
 # ==========================================
 # Debian 11 (Bullseye) to Debian 12 (Bookworm) Upgrade Script (Unattended)
 # Author: QsSama
-# apt update && apt install -y wget && wget -O update12.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/update12.sh?t=$RANDOM" && bash update12.sh
-# 注意：archive.debian.org 在部分地区无法访问，脚本内已替换为阿里云归档镜像
+# apt install -y wget && wget -O update12.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/update12.sh?t=$RANDOM" && bash update12.sh
 # ==========================================
 
 # 定义日志文件位置

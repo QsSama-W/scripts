@@ -82,7 +82,7 @@ wget -O zzj-v2.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/zzj-v
 
 需要 bash：
 ```bash
-apt update && apt install -y wget && wget -O update12.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/update12.sh?t=$RANDOM" && bash update12.sh
+apt install -y wget && wget -O update12.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/update12.sh?t=$RANDOM" && bash update12.sh
 ```
 
 
