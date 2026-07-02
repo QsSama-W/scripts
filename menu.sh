@@ -2,6 +2,9 @@
 # 一键脚本管理器 - 自动从仓库拉取最新脚本列表
 # 用法: bash menu.sh
 
+# 清屏
+clear 2>/dev/null || printf '\033[2J\033[H'
+
 REPO_RAW="https://raw.githubusercontent.com/QsSama-W/scripts/main"
 README_URL="${REPO_RAW}/README.md"
 SCRIPTS_DIR="/tmp/qs-scripts"
