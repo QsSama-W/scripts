@@ -36,22 +36,19 @@ echo -e "${GREEN} 完成！${NC}"
 echo ""
 
 # 解析 README 提取脚本名和描述
-COUNT=0
 > "${SCRIPTS_DIR}/names.txt"
 > "${SCRIPTS_DIR}/descs.txt"
 
-# 用 grep 过滤出包含 .sh 的表格行，排除表头分隔行
-grep '|.*\.sh|' "${SCRIPTS_DIR}/README.md" | grep -v '---' | while IFS= read -r line; do
-    # 提取脚本名（反引号之间的内容）
-    name=$(echo "$line" | sed 's/.*`\(.*\)`.*/\1/')
-    # 提取描述（第二个 | 和第三个 | 之间）
-    desc=$(echo "$line" | awk -F'|' '{gsub(/^ +| +$/, "", $3); print $3}')
-    if [ -n "$name" ]; then
-        echo "$name" >> "${SCRIPTS_DIR}/names.txt"
-        echo "$desc" >> "${SCRIPTS_DIR}/descs.txt"
-        COUNT=$((COUNT + 1))
-    fi
-done
+# 用 awk 一次性完成过滤和解析
+awk -F'|' '/\| `.*\.sh` \|/ && !/---/ {
+    gsub(/^[ \t]+|[ \t]+$/, "", $2)
+    gsub(/`/, "", $2)
+    gsub(/^[ \t]+|[ \t]+$/, "", $3)
+    if ($2 != "") {
+        print $2 > "'${SCRIPTS_DIR}/names.txt'"
+        print $3 > "'${SCRIPTS_DIR}/descs.txt'"
+    }
+}' "${SCRIPTS_DIR}/README.md"
 
 COUNT=$(wc -l < "${SCRIPTS_DIR}/names.txt" | tr -d ' ')
 
