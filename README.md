@@ -9,21 +9,30 @@
 | 脚本 | 功能 |
 |------|------|
 | `menu.sh` | 脚本管理器（一键选择执行所有脚本） |
-| `bbr.sh` | 启用 BBR 拥塞控制算法 |
+| **系统升级** | |
+| `update12.sh` | Debian 11 升级到 Debian 12 |
+| `update13.sh` | Debian 12 升级到 Debian 13 (Trixie) |
+| `upgrade-debian.sh` | Debian 13 系统更新（带内存/磁盘检查） |
+| **系统管理** | |
 | `hostname.sh` | 修改主机名 |
-| `install_ddns_go.sh` | 安装/更新 DDNS-GO |
+| `cleanup.sh` | Debian/Alpine 系统垃圾清理 |
+| `bbr.sh` | 启用 BBR 拥塞控制算法 |
+| **网络 / IPv6** | |
+| `v6set.sh` | IPv6 地址管理工具 |
+| `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
+| `open_v6_port.sh` | LXC/LXD 开放 IPv6 端口 |
+| `throttle.sh` | 网络限速工具 |
+| **代理 / 隧道** | |
 | `install-singbox-lite.sh` | 安装 sing-box（多协议支持） |
 | `install-singbox-lite-SANs.sh` | 安装 sing-box（带 SANs 证书） |
-| `open_v6_port.sh` | LXC/LXD 开放 IPv6 端口 |
-| `v6set.sh` | IPv6 地址管理工具 |
 | `zzj-v2.sh` | Realm 端口转发管理 |
-| `update13.sh` | Debian 12 升级到 Debian 13 (Trixie) |
-| `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
-| `cleanup.sh` | Debian/Alpine 系统垃圾清理 |
-| `upgrade-debian.sh` | Debian 13 系统更新（带内存/磁盘检查） |
+| `install_ddns_go.sh` | 安装/更新 DDNS-GO |
+| **安装 / 部署** | |
 | `install_bt.sh` | 宝塔面板安装 |
+| `mount_www.sh` | 挂载数据盘到 /www |
+| **测试** | |
 | `nq_test.sh` | NodeQuality 节点质量测试 |
-| `throttle.sh` | 网络限速工具 |
+| `speed-test.sh` | 下载速度测试 |
 
 ## 一键安装
 
