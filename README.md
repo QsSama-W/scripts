@@ -28,9 +28,9 @@
 
 ### 脚本管理器（一键选择所有脚本）
 
-一键拉取最新脚本列表并选择执行，自动安装缺失依赖（Debian/Alpine 通用）：
+一键拉取最新脚本列表并选择执行（Debian/Alpine 通用）：
 ```bash
-[ -x "$(command -v curl)" ] || { command -v apk >/dev/null && apk add -f curl || apt-get install -y curl; }; [ -x "$(command -v bash)" ] || { command -v apk >/dev/null && apk add -f bash || apt-get install -y bash; }; curl -sL -o /tmp/menu.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/menu.sh?t=$RANDOM"; bash /tmp/menu.sh
+wget -qO /tmp/menu.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/menu.sh?t=$RANDOM" && sh /tmp/menu.sh
 ```
 
 ### BBR 启用
