@@ -122,5 +122,9 @@ echo -e "${GREEN}下载完成！${NC}"
 echo -e "${CYAN}正在执行 ${BOLD}${SELECTED}${NC}${CYAN} ...${NC}"
 echo ""
 
-# 执行脚本
-sh "$TARGET"
+# 执行脚本（检测 shebang，优先 bash）
+SHEBANG=$(head -1 "$TARGET" 2>/dev/null)
+case "$SHEBANG" in
+    *bash*) exec bash "$TARGET" ;;
+    *)      sh "$TARGET" ;;
+esac
