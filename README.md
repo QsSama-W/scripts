@@ -21,6 +21,9 @@
 | `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
 | `cleanup.sh` | Debian/Alpine 系统垃圾清理 |
 | `upgrade-debian.sh` | Debian 13 系统更新（带内存/磁盘检查） |
+| `install_bt.sh` | 宝塔面板安装 |
+| `nq_test.sh` | NodeQuality 节点质量测试 |
+| `throttle.sh` | 网络限速工具 |
 
 ## 一键安装
 
@@ -136,4 +139,25 @@ wget -O cleanup.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/clea
 需要 bash（自动检查内存≥1G、磁盘≥10G）：
 ```bash
 wget -O upgrade-debian.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/upgrade-debian.sh?t=$RANDOM" && bash upgrade-debian.sh
+```
+
+### 宝塔面板安装
+
+通用安装脚本：
+```bash
+if [ -f /usr/bin/curl ]; then curl -sSO https://download.bt.cn/install/install_panel.sh; else wget -O install_panel.sh https://download.bt.cn/install/install_panel.sh; fi; bash install_panel.sh ed8484bec
+```
+
+### NodeQuality 节点测试
+
+Debian / Alpine 通用：
+```bash
+command -v apk >/dev/null && apk add curl && bash <(curl -sL https://run.NodeQuality.com) || (apt update && apt install -y curl && bash <(curl -sL https://run.NodeQuality.com))
+```
+
+### 网络限速工具
+
+Debian / Alpine 通用：
+```bash
+wget -O- https://raw.githubusercontent.com/QsSama-W/Throttle/main/install.sh?t=$RANDOM | sh
 ```
