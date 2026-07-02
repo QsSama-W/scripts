@@ -2,13 +2,11 @@
 # 一键脚本管理器 - 自动从仓库拉取最新脚本列表
 # 用法: sh menu.sh
 
-# 清屏
 clear 2>/dev/null || printf '\033[2J\033[H'
 
-# 清理函数
 cleanup() {
     rm -f /tmp/menu.sh
-    rm -f "${SCRIPTS_DIR}/README.md" "${SCRIPTS_DIR}/names.txt" "${SCRIPTS_DIR}/descs.txt"
+    rm -f "${SCRIPTS_DIR}/README.md" "${SCRIPTS_DIR}/names.txt" "${SCRIPTS_DIR}/descs.txt" "${SCRIPTS_DIR}/cmds.txt"
     rm -f "${SCRIPTS_DIR}/${SELECTED}" 2>/dev/null
 }
 trap cleanup EXIT
@@ -17,7 +15,6 @@ REPO_RAW="https://raw.githubusercontent.com/QsSama-W/scripts/main"
 README_URL="${REPO_RAW}/README.md"
 SCRIPTS_DIR="/tmp/qs-scripts"
 
-# 颜色
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -25,7 +22,6 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# 创建临时目录
 mkdir -p "$SCRIPTS_DIR"
 
 echo -e "${CYAN}${BOLD}========================================${NC}"
@@ -33,7 +29,6 @@ echo -e "${CYAN}${BOLD}    脚本一键管理器 - 自动同步最新版本${NC}
 echo -e "${CYAN}${BOLD}========================================${NC}"
 echo ""
 
-# 拉取最新 README
 echo -ne "${YELLOW}正在拉取最新脚本列表...${NC}"
 if ! wget -q -O "${SCRIPTS_DIR}/README.md" "${README_URL}?t=${RANDOM}" 2>/dev/null; then
     echo -e "${RED} 失败！${NC}"
@@ -43,11 +38,10 @@ fi
 echo -e "${GREEN} 完成！${NC}"
 echo ""
 
-# 解析 README 提取脚本名和描述
+# 解析脚本列表
 > "${SCRIPTS_DIR}/names.txt"
 > "${SCRIPTS_DIR}/descs.txt"
 
-# 用 awk 一次性完成过滤和解析
 awk -F'|' '/\| `.*\.sh` \|/ && !/---/ {
     gsub(/^[ \t]+|[ \t]+$/, "", $2)
     gsub(/`/, "", $2)
@@ -58,9 +52,37 @@ awk -F'|' '/\| `.*\.sh` \|/ && !/---/ {
     }
 }' "${SCRIPTS_DIR}/README.md"
 
+# 解析一键命令：代码块按行合并为一条命令，提取脚本文件名做 key
+awk '
+/```bash/ { in_code=1; next }
+/```/ && in_code {
+    in_code=0
+    if (cmd != "") {
+        n = split(cmd, parts, " ")
+        for (i = 1; i <= n; i++) {
+            if (parts[i] ~ /\.sh(\?|$)/) {
+                gsub(/\?.*/, "", parts[i])
+                gsub(/.*\//, "", parts[i])
+                cmds[parts[i]] = cmd
+                break
+            }
+        }
+        cmd = ""
+    }
+    next
+}
+in_code && NF > 0 {
+    if (cmd == "") cmd = $0; else cmd = cmd " && " $0
+}
+END {
+    while ((getline name < "'"${SCRIPTS_DIR}/names.txt"'") > 0) {
+        if (name in cmds) print cmds[name]
+        else print ""
+    }
+}' "${SCRIPTS_DIR}/README.md" > "${SCRIPTS_DIR}/cmds.txt"
+
 COUNT=$(wc -l < "${SCRIPTS_DIR}/names.txt" | tr -d ' ')
 
-# 如果没解析到脚本，可能格式变了
 if [ "$COUNT" -eq 0 ]; then
     echo -e "${RED}未能解析到脚本列表，README 格式可能已变更。${NC}"
     exit 1
@@ -69,7 +91,6 @@ fi
 echo -e "${GREEN}共发现 ${COUNT} 个脚本:${NC}"
 echo ""
 
-# 显示菜单
 echo -e "${BOLD}========================================${NC}"
 IDX=1
 while IFS= read -r name; do
@@ -82,11 +103,9 @@ echo -e "  ${RED} 0${NC}. 退出"
 echo -e "${BOLD}========================================${NC}"
 echo ""
 
-# 用户选择
 printf "请输入编号 [0-%d]: " "$COUNT"
 read choice
 
-# 验证输入
 case "$choice" in
     ''|*[!0-9]*)
         echo -e "${RED}输入无效，请输入数字。${NC}"
@@ -104,27 +123,17 @@ if [ "$choice" -lt 1 ] || [ "$choice" -gt "$COUNT" ]; then
     exit 1
 fi
 
-# 获取选中的脚本
 SELECTED=$(sed -n "${choice}p" "${SCRIPTS_DIR}/names.txt")
-SCRIPT_URL="${REPO_RAW}/${SELECTED}?t=${RANDOM}"
+CMD=$(sed -n "${choice}p" "${SCRIPTS_DIR}/cmds.txt")
 
-echo ""
-echo -e "${CYAN}正在下载 ${BOLD}${SELECTED}${NC}${CYAN} ...${NC}"
-
-# 下载脚本
-TARGET="${SCRIPTS_DIR}/${SELECTED}"
-if ! wget -q -O "$TARGET" "$SCRIPT_URL" 2>/dev/null; then
-    echo -e "${RED}下载失败！${NC}"
+if [ -z "$CMD" ]; then
+    echo -e "${RED}未找到 ${SELECTED} 的一键命令，请手动执行。${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}下载完成！${NC}"
-echo -e "${CYAN}正在执行 ${BOLD}${SELECTED}${NC}${CYAN} ...${NC}"
+echo ""
+echo -e "${CYAN}${BOLD}一键执行命令:${NC}"
+echo -e "  ${CMD}"
 echo ""
 
-# 执行脚本（检测 shebang，优先 bash）
-SHEBANG=$(head -1 "$TARGET" 2>/dev/null)
-case "$SHEBANG" in
-    *bash*) exec bash "$TARGET" ;;
-    *)      sh "$TARGET" ;;
-esac
+eval "$CMD"
