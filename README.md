@@ -8,6 +8,7 @@
 
 | 脚本 | 功能 |
 |------|------|
+| `menu.sh` | 脚本管理器（一键选择执行所有脚本） |
 | `bbr.sh` | 启用 BBR 拥塞控制算法 |
 | `hostname.sh` | 修改主机名 |
 | `install_ddns_go.sh` | 安装/更新 DDNS-GO |
@@ -24,6 +25,13 @@
 ## 一键安装
 
 ## 一键安装
+
+### 脚本管理器（一键选择所有脚本）
+
+一键拉取最新脚本列表并选择执行：
+```bash
+wget -O menu.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/menu.sh?t=$RANDOM" && bash menu.sh
+```
 
 ### BBR 启用
 
