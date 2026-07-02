@@ -5,6 +5,14 @@
 # 清屏
 clear 2>/dev/null || printf '\033[2J\033[H'
 
+# 清理函数
+cleanup() {
+    rm -f /tmp/menu.sh
+    rm -f "${SCRIPTS_DIR}/README.md" "${SCRIPTS_DIR}/names.txt" "${SCRIPTS_DIR}/descs.txt"
+    rm -f "${SCRIPTS_DIR}/${SELECTED}" 2>/dev/null
+}
+trap cleanup EXIT
+
 REPO_RAW="https://raw.githubusercontent.com/QsSama-W/scripts/main"
 README_URL="${REPO_RAW}/README.md"
 SCRIPTS_DIR="/tmp/qs-scripts"
@@ -116,7 +124,3 @@ echo ""
 
 # 执行脚本
 sh "$TARGET"
-
-# 清理
-rm -f "$TARGET"
-rm -f "${SCRIPTS_DIR}/names.txt" "${SCRIPTS_DIR}/descs.txt"
