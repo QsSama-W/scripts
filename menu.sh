@@ -41,19 +41,19 @@ COUNT=0
 > "${SCRIPTS_DIR}/descs.txt"
 
 while IFS= read -r line; do
-    # 匹配表格行: | `script.sh` | 描述 |
-    case "$line" in
-        "| "\`*.sh\`"|"*)
-            # 提取脚本名
-            name=$(echo "$line" | sed -n 's/.*`\(.*\.sh\)`.*/\1/p')
-            # 提取描述
-            desc=$(echo "$line" | sed 's/^[^|]*|[^|]*| *//;s/ *|[^|]*$/ /;s/^ *//;s/ *$//')
-            if [ -n "$name" ]; then
-                echo "$name" >> "${SCRIPTS_DIR}/names.txt"
-                echo "$desc" >> "${SCRIPTS_DIR}/descs.txt"
-                COUNT=$((COUNT + 1))
-            fi
-            ;;
+    # 匹配包含 .sh 的表格行（跳过分隔行 ---）
+    case "$line" in *"`"*.sh`*"|"*)
+        case "$line" in *"---"*) continue ;; esac
+        # 提取脚本名
+        name=$(echo "$line" | sed -n 's/.*`\([^`]*\.sh\)`.*/\1/p')
+        # 提取描述（第二个 | 和第三个 | 之间的内容）
+        desc=$(echo "$line" | awk -F'|' '{gsub(/^ +| +$/, "", $3); print $3}')
+        if [ -n "$name" ]; then
+            echo "$name" >> "${SCRIPTS_DIR}/names.txt"
+            echo "$desc" >> "${SCRIPTS_DIR}/descs.txt"
+            COUNT=$((COUNT + 1))
+        fi
+        ;;
     esac
 done < "${SCRIPTS_DIR}/README.md"
 
