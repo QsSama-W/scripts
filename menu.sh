@@ -40,22 +40,20 @@ COUNT=0
 > "${SCRIPTS_DIR}/names.txt"
 > "${SCRIPTS_DIR}/descs.txt"
 
-while IFS= read -r line; do
-    # 匹配包含 .sh 的表格行（跳过分隔行 ---）
-    case "$line" in *"`"*.sh`*"|"*)
-        case "$line" in *"---"*) continue ;; esac
-        # 提取脚本名
-        name=$(echo "$line" | sed -n 's/.*`\([^`]*\.sh\)`.*/\1/p')
-        # 提取描述（第二个 | 和第三个 | 之间的内容）
-        desc=$(echo "$line" | awk -F'|' '{gsub(/^ +| +$/, "", $3); print $3}')
-        if [ -n "$name" ]; then
-            echo "$name" >> "${SCRIPTS_DIR}/names.txt"
-            echo "$desc" >> "${SCRIPTS_DIR}/descs.txt"
-            COUNT=$((COUNT + 1))
-        fi
-        ;;
-    esac
-done < "${SCRIPTS_DIR}/README.md"
+# 用 grep 过滤出包含 .sh 的表格行，排除表头分隔行
+grep '|.*\.sh|' "${SCRIPTS_DIR}/README.md" | grep -v '---' | while IFS= read -r line; do
+    # 提取脚本名（反引号之间的内容）
+    name=$(echo "$line" | sed 's/.*`\(.*\)`.*/\1/')
+    # 提取描述（第二个 | 和第三个 | 之间）
+    desc=$(echo "$line" | awk -F'|' '{gsub(/^ +| +$/, "", $3); print $3}')
+    if [ -n "$name" ]; then
+        echo "$name" >> "${SCRIPTS_DIR}/names.txt"
+        echo "$desc" >> "${SCRIPTS_DIR}/descs.txt"
+        COUNT=$((COUNT + 1))
+    fi
+done
+
+COUNT=$(wc -l < "${SCRIPTS_DIR}/names.txt" | tr -d ' ')
 
 # 如果没解析到脚本，可能格式变了
 if [ "$COUNT" -eq 0 ]; then
