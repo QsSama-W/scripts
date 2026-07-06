@@ -136,4 +136,5 @@ echo -e "${CYAN}${BOLD}一键执行命令:${NC}"
 echo -e "  ${CMD}"
 echo ""
 
+CMD=$(echo "$CMD" | tr -d '\r')
 eval "$CMD"
