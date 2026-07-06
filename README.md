@@ -154,7 +154,7 @@ wget -O upgrade-debian.sh "https://raw.githubusercontent.com/QsSama-W/scripts/ma
 
 通用安装脚本：
 ```bash
-if [ -f /usr/bin/curl ]; then curl -sSO https://download.bt.cn/install/install_panel.sh; else wget -O install_panel.sh https://download.bt.cn/install/install_panel.sh; fi; bash install_panel.sh ed8484bec
+wget -O install_panel.sh https://download.bt.cn/install/install_panel.sh && bash install_panel.sh ed8484bec
 ```
 
 ### NodeQuality 节点测试
