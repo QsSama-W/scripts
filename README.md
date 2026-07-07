@@ -23,9 +23,9 @@
 | `open_v6_port.sh` | LXC/LXD 开放 IPv6 端口 |
 | `throttle.sh` | 网络限速工具 |
 | **代理 / 隧道** | |
-| `install-singbox-lite.sh` | 安装 sing-box（多协议支持） |
-| `install-singbox-lite-SANs.sh` | 安装 sing-box（带 SANs 证书） |
-| `zzj-v2.sh` | Realm 端口转发管理 |
+| `install-singbox-lite.sh` | 安装 sing-box 多协议支持(禁止在中国大陆区域执行此脚本) |
+| `install-singbox-lite-SANs.sh` | 安装 sing-box 带 SANs 证书(禁止在中国大陆区域执行此脚本) |
+| `zzj-v2.sh` | Realm 端口转发管理(禁止在中国大陆区域执行此脚本) |
 | `install_ddns_go.sh` | 安装/更新 DDNS-GO |
 | **安装 / 部署** | |
 | `mount_www.sh` | 挂载数据盘到 /www |
