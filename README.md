@@ -28,7 +28,6 @@
 | `zzj-v2.sh` | Realm 端口转发管理 |
 | `install_ddns_go.sh` | 安装/更新 DDNS-GO |
 | **安装 / 部署** | |
-| `install_bt.sh` | 宝塔面板安装 |
 | `mount_www.sh` | 挂载数据盘到 /www |
 | **测试** | |
 | `nq_test.sh` | NodeQuality 节点质量测试 |
@@ -148,13 +147,6 @@ wget -O cleanup.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/clea
 需要 bash（自动检查内存≥1G、磁盘≥10G）：
 ```bash
 wget -O upgrade-debian.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/upgrade-debian.sh?t=$RANDOM" && bash upgrade-debian.sh
-```
-
-### 宝塔面板安装
-
-通用安装脚本：
-```bash
-wget -O install_panel.sh https://download.bt.cn/install/install_panel.sh && bash install_panel.sh ed8484bec
 ```
 
 ### NodeQuality 节点测试
