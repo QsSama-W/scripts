@@ -33,7 +33,6 @@
 | `nq_test.sh` | NodeQuality 节点质量测试 |
 | `speed-test.sh` | 下载速度测试 |
 
-## 一键安装
 
 ## 一键安装
 
