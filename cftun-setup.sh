@@ -37,9 +37,8 @@ if command -v cloudflared &>/dev/null && [ -f "/etc/systemd/system/cloudflared.s
             ;;
         2)
             read -p "  子域名: " SUB
-            read -p "  端口: " PORT
-            [ -z "$SUB" ] || [ -z "$PORT" ] && error "参数不能为空"
-            cftun add "$SUB" "$PORT"
+            [ -z "$SUB" ] && error "子域名不能为空"
+            cftun add "$SUB"
             exit 0
             ;;
         3)
@@ -184,10 +183,11 @@ if [ -n "$API_TOKEN" ]; then
 fi
 
 echo -e "\n${YELLOW}[4/4] 子域名配置${NC}"
-echo "  输入子域名前缀和对应的本地端口"
+echo "  输入子域名，所有子域名统一转发到 Nginx（端口 80）"
+echo "  请确保 Nginx 已配置好对应的反代规则"
 echo "  输入空行结束"
 echo ""
-echo "  示例: blog → 8080, wiki → 3000, api → 5000"
+echo "  示例: panel, hykj, blog, api.bbs"
 echo ""
 
 declare -A SUBDOMAINS
@@ -195,10 +195,8 @@ IDX=1
 while true; do
     read -p "  子域名 ${IDX} (留空结束): " SUB
     [ -z "$SUB" ] && break
-    read -p "  端口: " PORT
-    [ -z "$PORT" ] && error "端口不能为空"
-    SUBDOMAINS["$SUB"]="$PORT"
-    info "  ${SUB}.${DOMAIN} → localhost:${PORT}"
+    SUBDOMAINS["$SUB"]="80"
+    info "  ${SUB}.${DOMAIN} → localhost:80 (Nginx)"
     ((IDX++))
 done
 
@@ -257,10 +255,9 @@ EOF
 
 for SUB in "${!SUBDOMAINS[@]}"; do
     FULL="${SUB}.${DOMAIN}"
-    PORT="${SUBDOMAINS[$SUB]}"
     cat >> "$CONFIG_FILE" << EOF
   - hostname: ${FULL}
-    service: http://localhost:${PORT}
+    service: http://localhost:80
 EOF
 done
 
@@ -346,8 +343,8 @@ check_config() {
 }
 
 add_sub() {
-    [ -z "$1" ] || [ -z "$2" ] && echo "用法: cftun add <子域名> <端口>" && exit 1
-    SUB="$1"; PORT="$2"
+    [ -z "$1" ] && echo "用法: cftun add <子域名>" && exit 1
+    SUB="$1"
     UUID=$(get_tunnel_uuid); [ -z "$UUID" ] && echo "未找到隧道" && exit 1
 
     # 获取域名
@@ -363,38 +360,12 @@ add_sub() {
     # 绑定 DNS
     cloudflared tunnel route dns "$UUID" "$FULL" 2>/dev/null || true
 
-    # 添加配置
+    # 添加配置（统一转发到 Nginx 80 端口）
     if [ -f "$CONFIG_FILE" ]; then
-        sed -i "/service: http_status:404/i\\  - hostname: ${FULL}\\n    service: http://localhost:${PORT}" "$CONFIG_FILE" 2>/dev/null
+        sed -i "/service: http_status:404/i\\  - hostname: ${FULL}\\n    service: http://localhost:80" "$CONFIG_FILE" 2>/dev/null
         systemctl restart cloudflared 2>/dev/null
     fi
-    echo -e "${GREEN}[✓]${NC} ${FULL} → localhost:${PORT}"
-}
-
-edit_sub() {
-    [ -z "$1" ] && echo "用法: cftun edit <子域名> <新端口>" && exit 1
-    SUB="$1"; NEW_PORT="$2"
-    UUID=$(get_tunnel_uuid); [ -z "$UUID" ] && echo "未找到隧道" && exit 1
-
-    DOMAIN=$(grep "hostname:" "$CONFIG_FILE" 2>/dev/null | head -1 | sed 's/.*hostname: //' | sed 's/\/.*//' | cut -d. -f2-)
-    FULL="${SUB}.${DOMAIN}"
-
-    if [ -z "$NEW_PORT" ]; then
-        echo -e "${CYAN}编辑子域名: ${FULL}${NC}"
-        read -p "  新端口: " NEW_PORT
-        [ -z "$NEW_PORT" ] && echo "端口不能为空" && exit 1
-    fi
-
-    if ! grep -q "hostname: ${FULL}" "$CONFIG_FILE" 2>/dev/null; then
-        echo -e "${RED}[✗]${NC} ${FULL} 不存在，请先用 cftun add 添加"
-        exit 1
-    fi
-
-    cp "$CONFIG_FILE" "${CONFIG_FILE}.bak.$(date +%s)"
-    sed -i "/hostname: ${FULL}/,/service: http:/{s|localhost:[0-9]*|localhost:${NEW_PORT}|}" "$CONFIG_FILE" 2>/dev/null
-
-    systemctl restart cloudflared 2>/dev/null
-    echo -e "${GREEN}[✓]${NC} ${FULL} → localhost:${NEW_PORT} (已更新)"
+    echo -e "${GREEN}[✓]${NC} ${FULL} → localhost:80 (Nginx)"
 }
 
 del_sub() {
@@ -421,20 +392,7 @@ show_list() {
     echo ""
     echo -e "${CYAN}=== 当前配置 ===${NC}"
     if [ -f "$CONFIG_FILE" ]; then
-        LAST_HOST=""
-        while IFS= read -r line; do
-            HOST=$(echo "$line" | grep -oP 'hostname:\s*\K.*')
-            SVC=$(echo "$line" | grep -oP 'service:\s*\K.*')
-            if [ -n "$HOST" ]; then
-                LAST_HOST="$HOST"
-            fi
-            if [ -n "$SVC" ] && [ -n "$LAST_HOST" ]; then
-                echo "$SVC" | grep -q "http_status" && { LAST_HOST=""; continue; }
-                PORT=$(echo "$SVC" | grep -oP ':\K[0-9]+$')
-                echo -e "  ${YELLOW}${LAST_HOST}${NC} → localhost:${PORT}"
-                LAST_HOST=""
-            fi
-        done < "$CONFIG_FILE"
+        grep "hostname:" "$CONFIG_FILE" 2>/dev/null | sed 's/  - hostname: /  /' || echo "  (无)"
     else
         echo "  (配置文件不存在)"
     fi
@@ -445,8 +403,7 @@ show_list() {
 }
 
 case "$1" in
-  add|a)     add_sub "$2" "$3" ;;
-  edit|e)    edit_sub "$2" "$3" ;;
+  add|a)     add_sub "$2" ;;
   del|d|rm)  del_sub "$2" ;;
   list|ls|l) show_list ;;
   start)
@@ -483,8 +440,7 @@ case "$1" in
     echo -e "${CYAN}Cloudflare Tunnel 管理工具${NC}"
     echo ""
     echo "子域名管理:"
-    echo "  cftun add <子域名> <端口>       添加子域名"
-    echo "  cftun edit <子域名> <端口>      修改子域名端口"
+    echo "  cftun add <子域名>              添加子域名"
     echo "  cftun del <子域名>              删除子域名"
     echo "  cftun list                      查看所有"
     echo ""
@@ -517,14 +473,12 @@ echo "配置文件: ${CONFIG_FILE}"
 echo ""
 echo "已配置的站点:"
 for SUB in "${!SUBDOMAINS[@]}"; do
-    PORT="${SUBDOMAINS[$SUB]}"
-    echo "  ${YELLOW}https://${SUB}.${DOMAIN}${NC} → localhost:${PORT}"
+    echo "  ${YELLOW}https://${SUB}.${DOMAIN}${NC} → localhost:80 (Nginx)"
 done
 echo ""
 echo "快速命令:"
-echo "  cftun add wiki 3000           添加新站点"
-echo "  cftun edit wiki 3001          修改端口"
-echo "  cftun del wiki                删除站点"
+echo "  cftun add wiki                添加子域名"
+echo "  cftun del wiki                删除子域名"
 echo "  cftun list                    查看所有"
 echo "  cftun restart                 重启隧道"
 echo "  cftun logs                    查看日志"
