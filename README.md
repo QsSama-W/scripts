@@ -27,6 +27,8 @@
 | `install-singbox-lite-SANs.sh` | 安装 sing-box 带 SANs 证书(禁止在中国大陆区域执行此脚本) |
 | `zzj-v2.sh` | Realm 端口转发管理(禁止在中国大陆区域执行此脚本) |
 | `install_ddns_go.sh` | 安装/更新 DDNS-GO |
+| `cftun-setup.sh` | 安装CloudFlared Tunnel |
+| `cftun-uninstall.sh` | 卸载CloudFlared Tunnel |
 | **安装 / 部署** | |
 | `mount_www.sh` | 挂载数据盘到 /www |
 | **测试** | |
@@ -160,4 +162,18 @@ command -v apk >/dev/null && apk add curl && bash <(curl -sL https://run.NodeQua
 Debian / Alpine 通用：
 ```bash
 wget -O- https://raw.githubusercontent.com/QsSama-W/Throttle/main/install.sh?t=$RANDOM | sh
+```
+
+### 安装CloudFlared Tunnel
+
+仅在Debian使用：
+```bash
+wget -O cftun-setup.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/cftun-setup.sh?t=$RANDOM" && bash cftun-setup.sh
+```
+
+### 卸载CloudFlared Tunnel
+
+仅在Debian使用：
+```bash
+wget -O cftun-uninstall.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/cftun-uninstall.sh?t=$RANDOM" && bash cftun-uninstall.sh
 ```
