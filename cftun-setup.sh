@@ -61,7 +61,7 @@ if ! command -v cloudflared &>/dev/null; then
     # 尝试多个下载源
     DOWNLOADED=false
 
-    # 方法1: Cloudflare 官方 apt 仓库（最稳定）
+    # 方法1: Cloudflare 官方 apt 仓库
     if ! $DOWNLOADED; then
         info "尝试 apt 安装..."
         if command -v apt-get &>/dev/null; then
@@ -71,16 +71,15 @@ if ! command -v cloudflared &>/dev/null; then
         fi
     fi
 
-    # 方法2: ghproxy 国内镜像
+    # 方法2: gh-proxy.com 镜像
+    if ! $DOWNLOADED; then
+        info "尝试 gh-proxy.com 镜像..."
+        curl -fsSL --connect-timeout 10 "https://gh-proxy.com/https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}" -o /usr/local/bin/cloudflared 2>/dev/null && DOWNLOADED=true || true
+    fi
+    # 方法3: ghproxy.net 镜像
     if ! $DOWNLOADED; then
         info "尝试 ghproxy 镜像..."
-        curl -fsSL --connect-timeout 10 "https://mirror.ghproxy.com/https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}" -o /usr/local/bin/cloudflared 2>/dev/null && DOWNLOADED=true || true
-    fi
-
-    # 方法3: ghp.ci 镜像
-    if ! $DOWNLOADED; then
-        info "尝试 ghp.ci 镜像..."
-        curl -fsSL --connect-timeout 10 "https://ghp.ci/https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}" -o /usr/local/bin/cloudflared 2>/dev/null && DOWNLOADED=true || true
+        curl -fsSL --connect-timeout 10 "https://ghproxy.net/https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}" -o /usr/local/bin/cloudflared 2>/dev/null && DOWNLOADED=true || true
     fi
 
     # 方法4: GitHub 直连
@@ -104,13 +103,13 @@ mkdir -p "$CONFIG_DIR"
 # 3. 收集基础信息
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${CYAN}  CF 隧道安装向导（浏览器授权版）${NC}"
+echo -e "${CYAN}  CloudFlare Tunnel安装向导${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e "\n${YELLOW}[1/4] 浏览器授权登录${NC}"
 echo "  接下来会生成一个授权链接"
 echo "  请复制链接在本地浏览器打开，登录 Cloudflare 账号并授权"
-echo "  选择要使用的域名（免费套餐选 Free 就行，不需要绑卡）"
+echo "  选择要使用的域名"
 echo "  授权完成后 cloudflared 会自动下载证书"
 echo ""
 echo "  按回车生成授权链接..."
