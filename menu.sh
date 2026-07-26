@@ -4,6 +4,8 @@
 
 clear 2>/dev/null || printf '\033[2J\033[H'
 
+VERSION="v1.0.2"
+
 cleanup() {
     rm -f /tmp/menu.sh
     rm -f "${SCRIPTS_DIR}/README.md" "${SCRIPTS_DIR}/names.txt" "${SCRIPTS_DIR}/descs.txt" "${SCRIPTS_DIR}/cmds.txt"
@@ -25,7 +27,7 @@ NC='\033[0m'
 mkdir -p "$SCRIPTS_DIR"
 
 printf "%b\n" "${CYAN}${BOLD}========================================${NC}"
-printf "%b\n" "${CYAN}${BOLD}    脚本一键管理器 - 自动同步最新版本${NC}"
+printf "%b\n" "${CYAN}${BOLD}    脚本一键管理器 %s - 自动同步最新版本${NC}" "$VERSION"
 printf "%b\n" "${CYAN}${BOLD}========================================${NC}"
 echo ""
 
@@ -42,7 +44,9 @@ echo ""
 > "${SCRIPTS_DIR}/names.txt"
 > "${SCRIPTS_DIR}/descs.txt"
 
-awk -F'|' '/\| `.*\.sh` \|/ && !/---/ {
+awk -F'|' '
+{ sub(/\r$/, "") } 
+/\| `.*\.sh` \|/ && !/---/ {
     gsub(/^[ \t]+|[ \t]+$/, "", $2)
     gsub(/`/, "", $2)
     gsub(/^[ \t]+|[ \t]+$/, "", $3)
@@ -54,6 +58,7 @@ awk -F'|' '/\| `.*\.sh` \|/ && !/---/ {
 
 # 解析一键命令：支持从注释中强制读取文件名 Key
 awk '
+{ sub(/\r$/, "") }
 /```bash/ { in_code=1; explicit_name=""; next }
 /```/ && in_code {
     in_code=0
@@ -80,7 +85,8 @@ in_code && NF > 0 {
     if ($0 ~ /^[ \t]*#/) {
         if ($0 ~ /\.sh/) {
             tmp = $0
-            gsub(/.*#|[ \t]+/, "", tmp)
+            sub(/^[ \t]*#[ \t]*/, "", tmp) # 移除开头的井号和空格
+            sub(/[ \t]*$/, "", tmp)        # 移除末尾多余的空格
             if (tmp ~ /\.sh$/) explicit_name = tmp
         }
     } else {
