@@ -31,6 +31,8 @@
 | `cftun-uninstall.sh` | 卸载CloudFlared Tunnel |
 | **安装 / 部署** | |
 | `mount_www.sh` | 挂载数据盘到 /www |
+| `bt_panel.sh` | 宝塔面板安装 |
+| `1panel.sh` | 1panel安装 |
 | **测试** | |
 | `nq_test.sh` | NodeQuality 节点质量测试 |
 | `speed-test.sh` | 下载速度测试 |
@@ -178,4 +180,20 @@ wget -O cftun-setup.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/
 仅在Debian使用：
 ```bash
 wget -O cftun-uninstall.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/cftun-uninstall.sh?t=$RANDOM" && bash cftun-uninstall.sh
+```
+
+### 宝塔面板安装
+
+Debian / Ubuntu 通用：
+```bash
+# bt_panel.sh
+wget -O install_panel.sh https://download.bt.cn/install/install_panel.sh && bash install_panel.sh ed8484bec
+```
+
+### 1panel安装
+
+Debian / Ubuntu 通用：
+```bash
+# 1panel.sh
+bash -c "$(curl -sSL https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh)"
 ```
