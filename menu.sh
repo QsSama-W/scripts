@@ -11,7 +11,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-REPO_RAW="[https://raw.githubusercontent.com/QsSama-W/scripts/main](https://raw.githubusercontent.com/QsSama-W/scripts/main)"
+REPO_RAW="https://raw.githubusercontent.com/QsSama-W/scripts/main"
 README_URL="${REPO_RAW}/README.md"
 SCRIPTS_DIR="/tmp/qs-scripts"
 
@@ -24,18 +24,18 @@ NC='\033[0m'
 
 mkdir -p "$SCRIPTS_DIR"
 
-echo -e "${CYAN}${BOLD}========================================${NC}"
-echo -e "${CYAN}${BOLD}    脚本一键管理器 - 自动同步最新版本${NC}"
-echo -e "${CYAN}${BOLD}========================================${NC}"
+printf "%b\n" "${CYAN}${BOLD}========================================${NC}"
+printf "%b\n" "${CYAN}${BOLD}    脚本一键管理器 - 自动同步最新版本${NC}"
+printf "%b\n" "${CYAN}${BOLD}========================================${NC}"
 echo ""
 
-echo -ne "${YELLOW}正在拉取最新脚本列表...${NC}"
+printf "%b" "${YELLOW}正在拉取最新脚本列表...${NC}"
 if ! wget -q -O "${SCRIPTS_DIR}/README.md" "${README_URL}?t=${RANDOM}" 2>/dev/null; then
-    echo -e "${RED} 失败！${NC}"
-    echo -e "${RED}无法连接到 GitHub，请检查网络。${NC}"
+    printf "%b\n" "${RED} 失败！${NC}"
+    printf "%b\n" "${RED}无法连接到 GitHub，请检查网络。${NC}"
     exit 1
 fi
-echo -e "${GREEN} 完成！${NC}"
+printf "%b\n" "${GREEN} 完成！${NC}"
 echo ""
 
 # 解析脚本列表
@@ -97,14 +97,14 @@ END {
 COUNT=$(wc -l < "${SCRIPTS_DIR}/names.txt" | tr -d ' ')
 
 if [ "$COUNT" -eq 0 ]; then
-    echo -e "${RED}未能解析到脚本列表，README 格式可能已变更。${NC}"
+    printf "%b\n" "${RED}未能解析到脚本列表，README 格式可能已变更。${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}共发现 ${COUNT} 个脚本:${NC}"
+printf "%b\n" "${GREEN}共发现 ${COUNT} 个脚本:${NC}"
 echo ""
 
-echo -e "${BOLD}========================================${NC}"
+printf "%b\n" "${BOLD}========================================${NC}"
 IDX=1
 while IFS= read -r name; do
     desc=$(sed -n "${IDX}p" "${SCRIPTS_DIR}/descs.txt")
@@ -112,8 +112,8 @@ while IFS= read -r name; do
     IDX=$((IDX + 1))
 done < "${SCRIPTS_DIR}/names.txt"
 echo ""
-echo -e "  ${RED} 0${NC}. 退出"
-echo -e "${BOLD}========================================${NC}"
+printf "%b\n" "  ${RED} 0${NC}. 退出"
+printf "%b\n" "${BOLD}========================================${NC}"
 echo ""
 
 printf "请输入编号 [0-%d]: " "$COUNT"
@@ -121,7 +121,7 @@ read choice
 
 case "$choice" in
     ''|*[!0-9]*)
-        echo -e "${RED}输入无效，请输入数字。${NC}"
+        printf "%b\n" "${RED}输入无效，请输入数字。${NC}"
         exit 1
         ;;
 esac
@@ -132,7 +132,7 @@ if [ "$choice" -eq 0 ]; then
 fi
 
 if [ "$choice" -lt 1 ] || [ "$choice" -gt "$COUNT" ]; then
-    echo -e "${RED}编号超出范围，请重新运行。${NC}"
+    printf "%b\n" "${RED}编号超出范围，请重新运行。${NC}"
     exit 1
 fi
 
@@ -140,13 +140,13 @@ SELECTED=$(sed -n "${choice}p" "${SCRIPTS_DIR}/names.txt")
 CMD=$(sed -n "${choice}p" "${SCRIPTS_DIR}/cmds.txt")
 
 if [ -z "$CMD" ]; then
-    echo -e "${RED}未找到 ${SELECTED} 的一键命令，请手动执行。${NC}"
+    printf "%b\n" "${RED}未找到 ${SELECTED} 的一键命令，请手动执行。${NC}"
     exit 1
 fi
 
 echo ""
-echo -e "${CYAN}${BOLD}一键执行命令:${NC}"
-echo -e "  ${CMD}"
+printf "%b\n" "${CYAN}${BOLD}一键执行命令:${NC}"
+printf "%b\n" "  ${CMD}"
 echo ""
 
 CMD=$(echo "$CMD" | tr -d '\r')
