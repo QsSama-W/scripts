@@ -11,7 +11,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-REPO_RAW="https://raw.githubusercontent.com/QsSama-W/scripts/main"
+REPO_RAW="[https://raw.githubusercontent.com/QsSama-W/scripts/main](https://raw.githubusercontent.com/QsSama-W/scripts/main)"
 README_URL="${REPO_RAW}/README.md"
 SCRIPTS_DIR="/tmp/qs-scripts"
 
@@ -52,19 +52,23 @@ awk -F'|' '/\| `.*\.sh` \|/ && !/---/ {
     }
 }' "${SCRIPTS_DIR}/README.md"
 
-# 解析一键命令：代码块按行合并为一条命令，提取脚本文件名做 key
+# 解析一键命令：支持从注释中强制读取文件名 Key
 awk '
-/```bash/ { in_code=1; next }
+/```bash/ { in_code=1; explicit_name=""; next }
 /```/ && in_code {
     in_code=0
     if (cmd != "") {
-        n = split(cmd, parts, " ")
-        for (i = 1; i <= n; i++) {
-            if (parts[i] ~ /\.sh(\?|$)/) {
-                gsub(/\?.*/, "", parts[i])
-                gsub(/.*\//, "", parts[i])
-                cmds[parts[i]] = cmd
-                break
+        if (explicit_name != "") {
+            cmds[explicit_name] = cmd
+        } else {
+            n = split(cmd, parts, " ")
+            for (i = 1; i <= n; i++) {
+                if (parts[i] ~ /\.sh(\?|$)/) {
+                    gsub(/\?.*/, "", parts[i])
+                    gsub(/.*\//, "", parts[i])
+                    cmds[parts[i]] = cmd
+                    break
+                }
             }
         }
         cmd = ""
@@ -72,7 +76,16 @@ awk '
     next
 }
 in_code && NF > 0 {
-    if (cmd == "") cmd = $0; else cmd = cmd " && " $0
+    # 如果是注释行，尝试提取强绑定的脚本名称
+    if ($0 ~ /^[ \t]*#/) {
+        if ($0 ~ /\.sh/) {
+            tmp = $0
+            gsub(/.*#|[ \t]+/, "", tmp)
+            if (tmp ~ /\.sh$/) explicit_name = tmp
+        }
+    } else {
+        if (cmd == "") cmd = $0; else cmd = cmd " && " $0
+    }
 }
 END {
     while ((getline name < "'"${SCRIPTS_DIR}/names.txt"'") > 0) {

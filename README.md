@@ -154,6 +154,7 @@ wget -O upgrade-debian.sh "https://raw.githubusercontent.com/QsSama-W/scripts/ma
 
 Debian / Alpine 通用：
 ```bash
+# nq_test.sh
 command -v apk >/dev/null && apk add curl && bash <(curl -sL https://run.NodeQuality.com) || (apt update && apt install -y curl && bash <(curl -sL https://run.NodeQuality.com))
 ```
 
@@ -161,6 +162,7 @@ command -v apk >/dev/null && apk add curl && bash <(curl -sL https://run.NodeQua
 
 Debian / Alpine 通用：
 ```bash
+# throttle.sh
 wget -O- https://raw.githubusercontent.com/QsSama-W/Throttle/main/install.sh?t=$RANDOM | sh
 ```
 
