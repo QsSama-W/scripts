@@ -17,6 +17,7 @@
 | `hostname.sh` | 修改主机名 |
 | `cleanup.sh` | Debian/Alpine 系统垃圾清理 |
 | `bbr.sh` | 启用 BBR 拥塞控制算法 |
+| `wendu-monitor.sh` | Linux设备温度监控(仅物理机可用/测试版) |
 | **网络 / IPv6** | |
 | `v6set.sh` | IPv6 地址管理工具 |
 | `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
@@ -196,4 +197,12 @@ Debian / Ubuntu 通用：
 ```bash
 # 1panel.sh
 bash -c "$(curl -sSL https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh)"
+```
+
+### Linux设备温度监控
+
+Debian / Ubuntu 通用：
+```bash
+# wendu-monitor.sh
+wget -O wendu-monitor.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/wendu-monitor.sh?t=$RANDOM" && bash wendu-monitor.sh
 ```
