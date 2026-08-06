@@ -303,6 +303,22 @@ single_connection() {
     [ "$cnt" -eq 1 ] && find_connections
 }
 
+# ====== 判断参数是否是子命令（修复 frpc log <name> 问题） ======
+is_subcmd() {
+    case "$1" in
+        recent|tail|clear|clean|live|""|-f) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# ====== 大小写不敏感的确认（修复卸载 yes 不识别问题） ======
+confirm_yes() {
+    case "$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')" in
+        YES) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 # ======================== 帮助 ========================
 
 cmd_help() {
@@ -535,7 +551,6 @@ cmd_add() {
     line
     echo ""
 
-    # 1. 连接名称
     local name=""
     while true; do
         printf "  连接名称 (英文/数字/下划线): "
@@ -547,7 +562,6 @@ cmd_add() {
         break
     done
 
-    # 2. 服务器地址
     local addr=""
     while true; do
         printf "  服务器地址 (IP或域名): "
@@ -556,13 +570,11 @@ cmd_add() {
         printf "${R}    地址不能为空${NC}\n"
     done
 
-    # 3. 服务器端口
     local port="7000"
     printf "  服务器端口 [7000]: "
     read -r input
     [ -n "$input" ] && port="$input"
 
-    # 4. 认证 Token
     local token=""
     while true; do
         printf "  认证Token: "
@@ -574,7 +586,6 @@ cmd_add() {
     echo ""
     info "正在生成配置文件..."
 
-    # 5. 生成配置
     local conf="$CONFIGS_DIR/${name}.toml"
     cat > "$conf" <<ENDCONF
 # FRP Client Config - ${name}
@@ -615,15 +626,8 @@ ENDCONF
 
     ok "配置文件: $conf"
 
-    # 6. 编辑器 (完全照搬 frps 已验证的模式)
     echo ""
     info "即将打开编辑器，请配置 proxies 代理规则"
-
-    # 确保 nano 可用
-    if ! command -v nano >/dev/null 2>&1; then
-        info "安装 nano 编辑器..."
-        apt-get update -qq 2>/dev/null && apt-get install -y -qq nano 2>/dev/null
-    fi
 
     local editor=""
     if command -v nano >/dev/null 2>&1; then
@@ -637,28 +641,16 @@ ENDCONF
     if [ -n "$editor" ]; then
         printf "${B}[信息]${NC} 使用 ${BOLD}%s${NC} 编辑配置\n" "$editor"
         echo "  文件: $conf"
-        if [ "$editor" = "nano" ]; then
-            echo "  nano 操作: Ctrl+X → Y → 回车 保存"
-        else
-            echo "  vi 操作: i 进入编辑 → ESC → :wq 保存退出"
-        fi
         echo ""
 
-        # ====== 与 frps 完全一致的编辑器调用模式 ======
         stty sane 2>/dev/null
         TERM="${TERM:-xterm}"
         export TERM
 
         case "$editor" in
-            nano)
-                LANG=C.UTF-8 LC_ALL=C.UTF-8 nano "$conf"
-                ;;
-            vim)
-                LANG=C.UTF-8 LC_ALL=C.UTF-8 vim "$conf"
-                ;;
-            vi)
-                LANG=C.UTF-8 LC_ALL=C.UTF-8 vi "$conf"
-                ;;
+            nano) LANG=C.UTF-8 LC_ALL=C.UTF-8 nano "$conf" ;;
+            vim)  LANG=C.UTF-8 LC_ALL=C.UTF-8 vim "$conf" ;;
+            vi)   LANG=C.UTF-8 LC_ALL=C.UTF-8 vi "$conf" ;;
         esac
 
         stty sane 2>/dev/null
@@ -666,7 +658,6 @@ ENDCONF
         warn "无编辑器，请手动修改: $conf"
     fi
 
-    # 7. 创建服务
     info "创建服务文件..."
     local svc_name="${SERVICE_PREFIX}_${name}"
 
@@ -690,7 +681,6 @@ ENDSVC
     systemctl daemon-reload 2>/dev/null
     ok "服务 frpc_${name} 已创建"
 
-    # 8. 启动
     echo ""
     printf "  输入 y 立即启动，其他键跳过: "
     read -r c
@@ -733,7 +723,7 @@ cmd_remove() {
     echo ""
     printf "  输入 YES 确认: "
     read -r c
-    if [ "$c" != "YES" ]; then echo "  已取消"; return; fi
+    if ! confirm_yes "$c"; then echo "  已取消"; return; fi
 
     systemctl stop "${SERVICE_PREFIX}_${name}" 2>/dev/null
     systemctl disable "${SERVICE_PREFIX}_${name}" 2>/dev/null
@@ -750,7 +740,6 @@ cmd_conf() {
     local arg1=$1 arg2=$2
     local subcmd="edit" name=""
 
-    # 解析: frpc conf name / frpc conf show name / frpc conf (单连接自动选择)
     case "$arg1" in
         show|cat)
             subcmd="show"
@@ -777,12 +766,10 @@ cmd_conf() {
             echo "  文件: $conf"
             echo ""
 
-            # ====== 与 frps 完全一致的编辑器调用模式 ======
             stty sane 2>/dev/null
             TERM="${TERM:-xterm}"
             export TERM
 
-            local editor=""
             if command -v nano >/dev/null 2>&1; then
                 LANG=C.UTF-8 LC_ALL=C.UTF-8 nano "$conf"
             elif command -v vim >/dev/null 2>&1; then
@@ -815,12 +802,27 @@ cmd_conf() {
     esac
 }
 
-# ======================== log ========================
+# ======================== log（修复：frpc log <name> 直接工作） ========================
 
 cmd_log() {
-    local subcmd=$1 name=$2
+    local arg1=$1 arg2=$2
+    local subcmd="live" name=""
 
-    case "${subcmd:-live}" in
+    # frpc log           → arg1=空           → subcmd=live, name=空(自动选单连接)
+    # frpc log hk1       → arg1=hk1 不是子命令 → subcmd=live, name=hk1
+    # frpc log recent hk1 → arg1=recent 是子命令 → subcmd=recent, name=hk1
+    if [ -z "$arg1" ]; then
+        subcmd="live"
+        name=""
+    elif is_subcmd "$arg1"; then
+        subcmd="$arg1"
+        name="$arg2"
+    else
+        subcmd="live"
+        name="$arg1"
+    fi
+
+    case "$subcmd" in
         recent|tail)
             [ -z "$name" ] && name=$(single_connection)
             if [ -z "$name" ]; then printf "${R}[错误]${NC} 请指定连接名: frpc log recent <名称>\n"; return 1; fi
@@ -834,7 +836,9 @@ cmd_log() {
             local lf="${LOG_DIR}/${name}.log"
             printf "  确认清空 frpc_%s 日志? " "$name"
             read -r c
-            case "$c" in y|Y|yes|YES) [ -f "$lf" ] && > "$lf"; printf "${G}[成功]${NC} 日志已清空\n" ;; *) echo "  已取消" ;; esac
+            if ! confirm_yes "$c"; then echo "  已取消"; return; fi
+            [ -f "$lf" ] && > "$lf"
+            printf "${G}[成功]${NC} 日志已清空\n"
             ;;
         live|""|-f)
             [ -z "$name" ] && name=$(single_connection)
@@ -878,7 +882,7 @@ cmd_uninstall() {
     echo ""
     printf "  输入 YES 确认卸载: "
     read -r c
-    if [ "$c" != "YES" ]; then echo "  已取消"; return; fi
+    if ! confirm_yes "$c"; then echo "  已取消"; return; fi
 
     for n in $(find_connections); do
         systemctl stop "${SERVICE_PREFIX}_${n}" 2>/dev/null
