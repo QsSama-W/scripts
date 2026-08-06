@@ -3,8 +3,8 @@
 # ============================================================================
 #  FRP 服务端一键安装脚本
 #  运行一次后自动注册 frps CLI 命令
-#  兼容: Debian / Ubuntu / CentOS / Fedora / Alpine / Arch
-#  支持: systemd / OpenRC
+#  兼容: Debian / Ubuntu（仅限）
+#  支持: systemd
 #  日期: 2026-08-06
 # ============================================================================
 
@@ -32,15 +32,50 @@ die() {
     exit 1
 }
 
+# ======================== 发行版检测（新增） ========================
+# 仅允许 Debian / Ubuntu
+
+detect_distro() {
+    if [ ! -f /etc/os-release ]; then
+        echo "unknown"
+        return
+    fi
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    local id="${ID:-}" id_like="${ID_LIKE:-}"
+    case "$id" in
+        debian|ubuntu)  echo "debian" ;;
+        *)
+            case "$id_like" in
+                *debian*|*ubuntu*) echo "debian" ;;
+                *) echo "unknown" ;;
+            esac
+            ;;
+    esac
+}
+
+ensure_distro() {
+    local distro
+    distro=$(detect_distro)
+    if [ "$distro" != "debian" ]; then
+        printf "\033[0;31m[错误] 本脚本仅支持 Debian / Ubuntu 系统\033[0m\n" >&2
+        if [ -f /etc/os-release ]; then
+            # shellcheck disable=SC1091
+            . /etc/os-release
+            printf "\033[0;31m       当前系统: %s (%s)\033[0m\n" "${PRETTY_NAME:-unknown}" "${ID:-unknown}" >&2
+        fi
+        exit 1
+    fi
+    ok "系统兼容: $(. /etc/os-release && echo "${PRETTY_NAME:-$ID}")"
+}
+
 # ======================== 系统检测 ========================
 
 detect_init() {
     if [ -d /run/systemd/system ] 2>/dev/null; then echo "systemd"
-    elif [ -f /sbin/openrc ] 2>/dev/null; then echo "openrc"
     elif [ -f /proc/1/comm ]; then
         case "$(cat /proc/1/comm 2>/dev/null)" in
             systemd) echo "systemd" ;;
-            openrc-init) echo "openrc" ;;
             *) echo "unknown" ;;
         esac
     else echo "unknown"
@@ -48,11 +83,7 @@ detect_init() {
 }
 
 detect_pkg() {
-    if command -v apk >/dev/null 2>&1; then echo "apk"
-    elif command -v apt-get >/dev/null 2>&1; then echo "apt"
-    elif command -v dnf >/dev/null 2>&1; then echo "dnf"
-    elif command -v yum >/dev/null 2>&1; then echo "yum"
-    elif command -v pacman >/dev/null 2>&1; then echo "pacman"
+    if command -v apt-get >/dev/null 2>&1; then echo "apt"
     else echo "unknown"
     fi
 }
@@ -90,18 +121,9 @@ disk_free() {
 
 install_pkgs() {
     [ $# -eq 0 ] && return 0
-    local pkg
-    pkg=$(detect_pkg)
     info "安装软件包: $*"
-
-    case $pkg in
-        apk)     apk update -q 2>/dev/null; apk add --no-cache "$@" 2>/dev/null ;;
-        apt)     apt-get update -qq 2>/dev/null; apt-get install -y -qq "$@" 2>/dev/null ;;
-        dnf)     dnf install -y -q "$@" 2>/dev/null ;;
-        yum)     yum install -y -q "$@" 2>/dev/null ;;
-        pacman)  pacman -S --noconfirm --needed "$@" 2>/dev/null ;;
-        *)       die "无法自动安装，请手动安装: $@" ;;
-    esac
+    apt-get update -qq 2>/dev/null
+    apt-get install -y -qq "$@" 2>/dev/null
 }
 
 ensure_deps() {
@@ -110,29 +132,7 @@ ensure_deps() {
     line
     echo ""
 
-    local pkg
-    pkg=$(detect_pkg)
-
-    # 命令列表: 名称 debian/alpine/centos/arch
-    local cmds="curl wget tar grep openssl"
-    local ss_pkg=""
-
-    case $pkg in
-        apk)
-            cmds="$cmds bash"
-            ss_pkg="iproute2"
-            ;;
-        apt)
-            ss_pkg="iproute2"
-            ;;
-        yum|dnf)
-            ss_pkg="iproute"
-            ;;
-        pacman)
-            ss_pkg="iproute2"
-            ;;
-    esac
-
+    local cmds="curl wget tar grep openssl iproute2"
     local need=""
 
     for cmd in $cmds; do
@@ -140,35 +140,13 @@ ensure_deps() {
             ok "$cmd"
         else
             fail "$cmd"
-            case $pkg in
-                apk)
-                    case $cmd in
-                        bash)    need="$need bash" ;;
-                        openssl) need="$need libressl" ;;
-                        *)       need="$need $cmd" ;;
-                    esac ;;
-                apt)
-                    need="$need $cmd" ;;
-                yum|dnf)
-                    need="$need $cmd" ;;
-                pacman)
-                    need="$need $cmd" ;;
-            esac
+            need="$need $cmd"
         fi
     done
-
-    # ss 命令
-    if command -v ss >/dev/null 2>&1; then
-        ok "ss"
-    else
-        fail "ss"
-        [ -n "$ss_pkg" ] && need="$need $ss_pkg"
-    fi
 
     echo ""
 
     if [ -n "$need" ]; then
-        # 去重
         local unique=""
         for p in $need; do
             case " $unique " in
@@ -180,7 +158,6 @@ ensure_deps() {
         install_pkgs $unique || die "依赖安装失败，请手动安装后重试"
         echo ""
 
-        # 二次验证
         for cmd in $cmds; do
             command -v "$cmd" >/dev/null 2>&1 || die "工具 $cmd 安装后仍不可用"
         done
@@ -189,7 +166,6 @@ ensure_deps() {
         ok "所有依赖已就绪"
     fi
 
-    # 确保 /usr/local/bin 在 PATH 中
     case ":$PATH:" in
         *:/usr/local/bin:*) ;;
         *) export PATH="/usr/local/bin:$PATH" ;;
@@ -207,6 +183,9 @@ full_check() {
     echo ""
 
     local err=0
+
+    # 发行版（最先检测）
+    ensure_distro
 
     # root
     if [ "$(id -u)" -ne 0 ]; then
@@ -257,23 +236,19 @@ full_check() {
         else
             warn "GitHub 连通性检测失败，下载可能需要代理"
         fi
-    elif command -v wget >/dev/null 2>&1; then
-        if wget --spider --timeout=5 -q https://github.com 2>/dev/null; then
-            ok "GitHub 连通"
-        else
-            warn "GitHub 连通性检测失败，下载可能需要代理"
-        fi
     else
-        warn "无 curl/wget，跳过网络检测"
+        warn "无 curl，跳过网络检测"
     fi
 
     # 初始化系统
     local init
     init=$(detect_init)
-    case $init in
-        systemd|openrc) ok "初始化系统: $init" ;;
-        *) fail "不支持的初始化系统: $init (需要 systemd 或 OpenRC)"; err=$((err + 1)) ;;
-    esac
+    if [ "$init" = "systemd" ]; then
+        ok "初始化系统: systemd"
+    else
+        fail "不支持的初始化系统: $init (需要 systemd)"
+        err=$((err + 1))
+    fi
 
     # 端口
     local port
@@ -310,23 +285,16 @@ full_check() {
 
 get_version() {
     local v=""
-    # 方法1: GitHub API
     if command -v curl >/dev/null 2>&1; then
         v=$(curl -s --connect-timeout 10 --max-time 15 \
             https://api.github.com/repos/fatedier/frp/releases/latest 2>/dev/null \
             | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
     fi
-    # 方法2: 跟随重定向
     if [ -z "$v" ] && command -v curl >/dev/null 2>&1; then
         v=$(curl -sI --connect-timeout 10 \
             "https://github.com/fatedier/frp/releases/latest" 2>/dev/null \
             | grep -i "^location:" | tr -d '\r' \
             | grep -o 'v[0-9][0-9.]*' | head -1 | sed 's/^v//')
-    fi
-    # 方法3: wget
-    if [ -z "$v" ] && command -v wget >/dev/null 2>&1; then
-        v=$(wget -qO- --timeout=15 "https://github.com/fatedier/frp/releases/latest" 2>/dev/null \
-            | grep -o 'tag/v[0-9][0-9.]*' | head -1 | sed 's/tag\/v//')
     fi
     echo "$v"
 }
@@ -355,7 +323,6 @@ download_and_install() {
     local tmp
     tmp=$(mktemp -d)
 
-    # 下载
     info "正在下载..."
     local dl_ok=0
     if command -v wget >/dev/null 2>&1; then
@@ -373,10 +340,9 @@ download_and_install() {
         die "下载失败，请检查网络"
     fi
 
-    # 验证文件大小
     local fsize=0
     if command -v stat >/dev/null 2>&1; then
-        fsize=$(stat -c%s "$tmp/$file" 2>/dev/null || stat -f%z "$tmp/$file" 2>/dev/null || echo 0)
+        fsize=$(stat -c%s "$tmp/$file" 2>/dev/null || echo 0)
     fi
     if [ "$fsize" -lt 1048576 ]; then
         rm -rf "$tmp"
@@ -384,7 +350,6 @@ download_and_install() {
     fi
     ok "下载完成 ($(( fsize / 1048576 ))MB)"
 
-    # 解压
     info "正在解压..."
     if ! tar -xzf "$tmp/$file" -C "$tmp" 2>&1; then
         rm -rf "$tmp"
@@ -398,7 +363,6 @@ download_and_install() {
         die "解压后未找到 frps 可执行文件"
     fi
 
-    # 备份旧版本
     if [ -d "$INSTALL_DIR" ]; then
         local bak="/opt/frps_backups/frps_$(date +%Y%m%d_%H%M%S)"
         mkdir -p /opt/frps_backups
@@ -406,24 +370,20 @@ download_and_install() {
         info "旧版本已备份到: $bak"
     fi
 
-    # 安装
     mkdir -p "$INSTALL_DIR" "$LOG_DIR"
     cp "$dir/frps" "$FRPS_BIN"
     chmod +x "$FRPS_BIN"
 
-    # 生成配置
     if [ ! -f "$FRPS_CONF" ]; then
         gen_config
     fi
 
-    # 保存安装脚本
     if [ -f "$0" ] && [ "$0" != "/dev/stdin" ]; then
         cp "$0" "$INSTALL_DIR/install.sh" 2>/dev/null
     fi
 
     rm -rf "$tmp"
 
-    # 验证
     [ -x "$FRPS_BIN" ] || die "安装验证失败"
     local ver
     ver=$("$FRPS_BIN" --version 2>&1 | head -1)
@@ -478,13 +438,9 @@ ENDCONF
 # ======================== 服务文件 ========================
 
 setup_service() {
-    local init
-    init=$(detect_init)
-    info "创建服务文件 (init: $init)..."
+    info "创建 systemd 服务文件..."
 
-    case $init in
-        systemd)
-            cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<ENDSVC
+    cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<ENDSVC
 [Unit]
 Description=FRP Server (frps)
 After=network-online.target
@@ -502,31 +458,8 @@ WorkingDirectory=${INSTALL_DIR}
 [Install]
 WantedBy=multi-user.target
 ENDSVC
-            systemctl daemon-reload || die "daemon-reload 失败"
-            ok "systemd 服务已创建"
-            ;;
-        openrc)
-            cat > "/etc/init.d/${SERVICE_NAME}" <<'ENDSVC'
-#!/sbin/openrc-run
-name="frps"
-description="FRP Server"
-command="/opt/frps/frps"
-command_args="-c /opt/frps/frps.toml"
-command_user="root"
-command_background=true
-pidfile="/run/${RC_SVCNAME}.pid"
-output_log="/opt/frps/logs/frps.log"
-error_log="/opt/frps/logs/frps.log"
-respawn_delay=5
-respawn_max=10
-depend() { need net; after firewall; }
-start_pre() { mkdir -p /opt/frps/logs; touch /opt/frps/logs/frps.log; }
-ENDSVC
-            chmod +x "/etc/init.d/${SERVICE_NAME}"
-            ok "OpenRC 服务已创建"
-            ;;
-        *) die "不支持的初始化系统: $init" ;;
-    esac
+    systemctl daemon-reload || die "daemon-reload 失败"
+    ok "systemd 服务已创建"
 }
 
 # ======================== 注册 CLI ========================
@@ -541,7 +474,6 @@ register_cli() {
 #  由安装脚本自动生成
 # ============================================================================
 
-# 强制 UTF-8 编码，解决中文显示问题
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 export LANGUAGE=C.UTF-8
@@ -564,11 +496,9 @@ NC='\033[0m'
 
 init_sys() {
     if [ -d /run/systemd/system ] 2>/dev/null; then echo "systemd"
-    elif [ -f /sbin/openrc ] 2>/dev/null; then echo "openrc"
     elif [ -f /proc/1/comm ]; then
         case "$(cat /proc/1/comm 2>/dev/null)" in
             systemd) echo "systemd" ;;
-            openrc-init) echo "openrc" ;;
             *) echo "unknown" ;;
         esac
     else echo "unknown"
@@ -578,37 +508,19 @@ init_sys() {
 # ======================== 服务操作 ========================
 
 svc() {
-    local act=$1 init
-    init=$(init_sys)
-    case $init in
-        systemd)
-            case $act in
-                start)   systemctl start $SERVICE_NAME ;;
-                stop)    systemctl stop $SERVICE_NAME ;;
-                restart) systemctl restart $SERVICE_NAME ;;
-                enable)  systemctl enable $SERVICE_NAME ;;
-                disable) systemctl disable $SERVICE_NAME ;;
-                status)
-                    systemctl is-active --quiet $SERVICE_NAME 2>/dev/null && echo "active" || echo "inactive" ;;
-                enabled)
-                    systemctl is-enabled --quiet $SERVICE_NAME 2>/dev/null && echo "enabled" || echo "disabled" ;;
-                pid) systemctl show $SERVICE_NAME --property=MainPID --value 2>/dev/null ;;
-                log) shift; journalctl -u $SERVICE_NAME "$@" ;;
-            esac ;;
-        openrc)
-            case $act in
-                start)   rc-service $SERVICE_NAME start ;;
-                stop)    rc-service $SERVICE_NAME stop ;;
-                restart) rc-service $SERVICE_NAME restart ;;
-                enable)  rc-update add $SERVICE_NAME default ;;
-                disable) rc-update del $SERVICE_NAME default ;;
-                status)
-                    rc-service $SERVICE_NAME status >/dev/null 2>&1 && echo "active" || echo "inactive" ;;
-                enabled)
-                    rc-update show 2>/dev/null | grep -q $SERVICE_NAME && echo "enabled" || echo "disabled" ;;
-                pid) pgrep -x "frps" 2>/dev/null ;;
-                log) [ -f "$LOG_FILE" ] && tail -f "$LOG_FILE" ;;
-            esac ;;
+    local act=$1
+    case $act in
+        start)   systemctl start $SERVICE_NAME ;;
+        stop)    systemctl stop $SERVICE_NAME ;;
+        restart) systemctl restart $SERVICE_NAME ;;
+        enable)  systemctl enable $SERVICE_NAME ;;
+        disable) systemctl disable $SERVICE_NAME ;;
+        status)
+            systemctl is-active --quiet $SERVICE_NAME 2>/dev/null && echo "active" || echo "inactive" ;;
+        enabled)
+            systemctl is-enabled --quiet $SERVICE_NAME 2>/dev/null && echo "enabled" || echo "disabled" ;;
+        pid) systemctl show $SERVICE_NAME --property=MainPID --value 2>/dev/null ;;
+        log) shift; journalctl -u $SERVICE_NAME "$@" ;;
     esac
 }
 
@@ -616,7 +528,7 @@ svc() {
 
 pick_editor() {
     local e
-    for e in nano vim vi busybox; do
+    for e in nano vim vi; do
         command -v "$e" >/dev/null 2>&1 && { echo "$e"; return; }
     done
     echo ""
@@ -901,31 +813,27 @@ cmd_conf() {
             if [ -z "$editor" ]; then
                 printf "${R}[错误]${NC} 没有可用的文本编辑器\n"
                 echo "  请手动修改: $FRPS_CONF"
-                echo "  或安装编辑器: apk add nano / apt install nano"
+                echo "  或安装编辑器: apt install nano"
                 return 1
             fi
             printf "${B}[信息]${NC} 使用 ${BOLD}%s${NC} 编辑配置\n" "$editor"
             echo "  文件: $FRPS_CONF"
             echo ""
 
-            # 根据编辑器设置终端编码环境
+            # ===================== 关键修复 =====================
+            # 原脚本 nano 使用了 --const（禁止修改）导致无法编辑
+            # 已移除 --const 和 --linenumbers，直接以可写模式打开
+            # ======================================================
+
             case "$editor" in
                 nano)
-                    NANO_OPTIONS="--const --linenumbers"
-                    # nano 原生支持 UTF-8
-                    LANG=C.UTF-8 LC_ALL=C.UTF-8 nano $NANO_OPTIONS "$FRPS_CONF" 2>/dev/null \
-                        || LANG=C.UTF-8 LC_ALL=C.UTF-8 nano "$FRPS_CONF" 2>/dev/null \
-                        || nano "$FRPS_CONF"
+                    LANG=C.UTF-8 LC_ALL=C.UTF-8 nano "$FRPS_CONF"
                     ;;
-                vim|vi)
-                    # vim 通过启动命令设置编码
-                    vim -c "set encoding=utf-8 fileencoding=utf-8 termencoding=utf-8" "$FRPS_CONF" 2>/dev/null \
-                        || vim "$FRPS_CONF" 2>/dev/null \
-                        || vi "$FRPS_CONF"
+                vim)
+                    LANG=C.UTF-8 LC_ALL=C.UTF-8 vim "$FRPS_CONF"
                     ;;
-                busybox)
-                    # busybox vi 依赖终端和环境变量
-                    LANG=C.UTF-8 LC_ALL=C.UTF-8 busybox vi "$FRPS_CONF"
+                vi)
+                    LANG=C.UTF-8 LC_ALL=C.UTF-8 vi "$FRPS_CONF"
                     ;;
                 *)
                     LANG=C.UTF-8 LC_ALL=C.UTF-8 "$editor" "$FRPS_CONF"
@@ -983,7 +891,7 @@ cmd_uninstall() {
     echo ""
     printf "${Y}[警告]${NC} 即将卸载 frps，将删除:\n"
     echo "  - $INSTALL_DIR"
-    echo "  - 服务文件 (/etc/systemd/system/ 或 /etc/init.d/)"
+    echo "  - /etc/systemd/system/${SERVICE_NAME}.service"
     echo "  - $0"
     echo ""
     echo -n "  输入 YES 确认卸载: "
@@ -995,16 +903,8 @@ cmd_uninstall() {
 
     svc stop 2>/dev/null
     svc disable 2>/dev/null
-
-    local init
-    init=$(init_sys)
-    if [ "$init" = "systemd" ]; then
-        rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
-        systemctl daemon-reload 2>/dev/null
-    elif [ "$init" = "openrc" ]; then
-        rm -f "/etc/init.d/${SERVICE_NAME}"
-    fi
-
+    rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+    systemctl daemon-reload 2>/dev/null
     rm -rf "$INSTALL_DIR"
     rm -f "$0"
     printf "${G}[成功]${NC} frps 已完全卸载\n"
@@ -1012,7 +912,6 @@ cmd_uninstall() {
 
 # ======================== 主入口 ========================
 
-# 检查是否已安装
 if [ ! -x "$FRPS_BIN" ]; then
     case "${1:-help}" in
         help|-h|--help|"") cmd_help; exit 0 ;;
@@ -1060,7 +959,7 @@ do_install() {
     printf "  \033[1mFRP 服务端 一键安装\033[0m\n"
     echo ""
 
-    # 1. 环境检测
+    # 1. 环境检测（含发行版校验）
     full_check || die "环境检测未通过"
     echo ""
 
@@ -1079,13 +978,11 @@ do_install() {
     register_cli
     echo ""
 
-    # 确保 /usr/local/bin 在 PATH
     case ":$PATH:" in
         *:/usr/local/bin:*) ;;
         *) export PATH="/usr/local/bin:$PATH" ;;
     esac
 
-    # 完成
     line
     printf "  \033[0;32m安装完成！\033[0m\n"
     line
@@ -1107,8 +1004,7 @@ do_install() {
 # ======================== 入口 ========================
 
 case "${1:-}" in
-    --update| --reinstall)
-        # 被 CLI 的 reinstall 命令调用
+    --update|--reinstall)
         download_and_install
         setup_service
         register_cli
@@ -1116,7 +1012,6 @@ case "${1:-}" in
         ok "操作完成，运行 frps start 启动服务"
         ;;
     *)
-        # 正常安装
         do_install
         ;;
 esac
