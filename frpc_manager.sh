@@ -93,7 +93,6 @@ ensure_deps() {
 
     local cmds="curl tar grep" need="" ss_pkg="iproute2"
 
-    # 编辑器
     if command -v nano >/dev/null 2>&1; then ok "nano (编辑器)"
     else fail "nano (编辑器)"; need="$need nano"; fi
 
@@ -201,9 +200,8 @@ download_and_install() {
 
     info "正在下载..."
     local dl_ok=0
-    if command -v curl >/dev/null 2>&1; then
-        curl -# --connect-timeout 30 --retry 3 -L -o "$tmp/$file" "$url" 2>&1 && dl_ok=1
-    fi
+    curl -# --connect-timeout 30 --retry 3 -L -o "$tmp/$file" "$url" 2>&1 && dl_ok=1
+
     if [ "$dl_ok" -eq 0 ] || [ ! -f "$tmp/$file" ]; then rm -rf "$tmp"; die "下载失败"; fi
 
     local fsize=0
@@ -237,31 +235,6 @@ download_and_install() {
     ok "安装完成: $("$FRPC_BIN" --version 2>&1 | head -1)"
 }
 
-# ======================== 服务文件 ========================
-
-setup_service() {
-    local name=$1
-    local svc_name="${SERVICE_PREFIX}_${name}"
-    local conf="${CONFIGS_DIR}/${name}.toml"
-
-    cat > "/etc/systemd/system/${svc_name}.service" <<ENDSVC
-[Unit]
-Description=FRP Client (${name})
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=${FRPC_BIN} -c ${conf}
-Restart=always
-RestartSec=5
-LimitNOFILE=1048576
-
-[Install]
-WantedBy=multi-user.target
-ENDSVC
-}
-
 # ======================== 注册 CLI ========================
 
 register_cli() {
@@ -284,10 +257,17 @@ CONFIGS_DIR="$INSTALL_DIR/configs"
 LOG_DIR="$INSTALL_DIR/logs"
 SERVICE_PREFIX="frpc"
 
-R='\033[0;31m'; G='\033[0;32m'; Y='\033[1;33m'; B='\033[0;34m'
-BOLD='\033[1m'; NC='\033[0m'
+R='\033[0;31m'
+G='\033[0;32m'
+Y='\033[1;33m'
+B='\033[0;34m'
+BOLD='\033[1m'
+NC='\033[0m'
 
 # ======================== 工具函数 ========================
+
+# ====== 关键：定义 line 函数 ======
+line() { printf "\033[0;36m────────────────────────────────────────────────────\033[0m\n"; }
 
 # 列出所有连接名
 find_connections() {
@@ -335,22 +315,74 @@ single_connection() {
     [ "$cnt" -eq 1 ] && find_connections
 }
 
-# ======================== 服务操作 ========================
+# ====== 打开编辑器的统一函数 ======
+open_editor() {
+    local file=$1
+    stty sane 2>/dev/null
+    TERM="${TERM:-xterm}"
+    export TERM
 
-svc() {
-    local act=$1 svc_name=$2
-    local unit="${SERVICE_PREFIX}_${svc_name}"
-    case $act in
-        start)    systemctl start "$unit" ;;
-        stop)     systemctl stop "$unit" ;;
-        restart)  systemctl restart "$unit" ;;
-        enable)   systemctl enable "$unit" ;;
-        disable)  systemctl disable "$unit" ;;
-        status)   systemctl is-active --quiet "$unit" 2>/dev/null && echo "active" || echo "inactive" ;;
-        enabled)  systemctl is-enabled --quiet "$unit" 2>/dev/null && echo "enabled" || echo "disabled" ;;
-        pid)      systemctl show "$unit" --property=MainPID --value 2>/dev/null ;;
-        log)      shift 2; journalctl -u "$unit" "$@" ;;
-    esac
+    local editor=""
+    command -v nano >/dev/null 2>&1 && editor="nano"
+    command -v vim  >/dev/null 2>&1 && editor="vim"
+    command -v vi   >/dev/null 2>&1 && [ -z "$editor" ] && editor="vi"
+
+    if [ -z "$editor" ]; then
+        printf "${R}[错误]${NC} 没有可用的文本编辑器\n"
+        echo "  请安装: apt install nano"
+        return 1
+    fi
+
+    printf "${B}[信息]${NC} 使用 ${BOLD}%s${NC} 编辑\n" "$editor"
+    echo "  文件: $file"
+    echo ""
+
+    "$editor" "$file"
+    stty sane 2>/dev/null
+    return 0
+}
+
+# ======================== 帮助 ========================
+
+cmd_help() {
+    echo ""
+    printf "  ${BOLD}frpc${NC} - FRP 客户端管理工具 (多服务器)\n"
+    echo ""
+    printf "  ${BOLD}用法:${NC}\n"
+    echo "    frpc <命令> [选项]"
+    echo ""
+    printf "  ${BOLD}连接管理:${NC}\n"
+    echo "    frpc add [name]            添加服务器连接"
+    echo "    frpc remove <name>         删除连接"
+    echo "    frpc list                  列出所有连接"
+    echo ""
+    printf "  ${BOLD}服务控制:${NC}\n"
+    echo "    frpc start [name]          启动 (所有/指定)"
+    echo "    frpc stop [name]           停止 (所有/指定)"
+    echo "    frpc restart [name]        重启 (所有/指定)"
+    echo ""
+    printf "  ${BOLD}开机自启:${NC}\n"
+    echo "    frpc enable [name]         设置开机自启"
+    echo "    frpc disable [name]        取消开机自启"
+    echo ""
+    printf "  ${BOLD}状态查看:${NC}\n"
+    echo "    frpc status [name]         查看运行状态"
+    echo "    frpc version               查看版本"
+    echo ""
+    printf "  ${BOLD}日志管理:${NC}\n"
+    echo "    frpc log <name>            实时日志"
+    echo "    frpc log recent <name>     最近50行"
+    echo "    frpc log clear <name>      清空日志"
+    echo ""
+    printf "  ${BOLD}配置管理:${NC}\n"
+    echo "    frpc conf <name>           编辑配置"
+    echo "    frpc conf show <name>      查看配置"
+    echo ""
+    printf "  ${BOLD}维护:${NC}\n"
+    echo "    frpc reinstall             重新安装"
+    echo "    frpc uninstall             卸载"
+    echo "    frpc help                  显示此帮助"
+    echo ""
 }
 
 # ======================== start ========================
@@ -373,10 +405,11 @@ _start_one() {
     local name=$1 conf="$CONFIGS_DIR/${name}.toml"
     if [ ! -f "$conf" ]; then printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; fi
     printf "${B}[信息]${NC} 启动 frpc_%s ...\n" "$name"
-    svc start "$name" >/dev/null 2>&1
+    systemctl start "${SERVICE_PREFIX}_${name}" >/dev/null 2>&1
     sleep 1
-    if [ "$(svc status "$name")" = "active" ]; then
-        printf "${G}[成功]${NC} frpc_%s 已启动 (PID: %s)\n" "$name" "$(svc pid "$name")"
+    if systemctl is-active --quiet "${SERVICE_PREFIX}_${name}" 2>/dev/null; then
+        local pid; pid=$(systemctl show "${SERVICE_PREFIX}_${name}" --property=MainPID --value 2>/dev/null)
+        printf "${G}[成功]${NC} frpc_%s 已启动 (PID: %s)\n" "$name" "$pid"
     else
         printf "${R}[失败]${NC} frpc_%s 启动失败 (frpc log recent %s 查看日志)\n" "$name" "$name"
     fi
@@ -396,7 +429,7 @@ cmd_stop() {
 _stop_one() {
     local name=$1 conf="$CONFIGS_DIR/${name}.toml"
     if [ ! -f "$conf" ]; then printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; fi
-    svc stop "$name" >/dev/null 2>&1
+    systemctl stop "${SERVICE_PREFIX}_${name}" >/dev/null 2>&1
     printf "${G}[成功]${NC} frpc_%s 已停止\n" "$name"
 }
 
@@ -415,9 +448,9 @@ _restart_one() {
     local name=$1 conf="$CONFIGS_DIR/${name}.toml"
     if [ ! -f "$conf" ]; then printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; fi
     printf "${B}[信息]${NC} 重启 frpc_%s ...\n" "$name"
-    svc restart "$name" >/dev/null 2>&1
+    systemctl restart "${SERVICE_PREFIX}_${name}" >/dev/null 2>&1
     sleep 1
-    if [ "$(svc status "$name")" = "active" ]; then
+    if systemctl is-active --quiet "${SERVICE_PREFIX}_${name}" 2>/dev/null; then
         printf "${G}[成功]${NC} frpc_%s 已重启\n" "$name"
     else
         printf "${R}[失败]${NC} frpc_%s 重启失败\n" "$name"
@@ -430,11 +463,11 @@ cmd_enable() {
     local name=$1
     if [ -n "$name" ]; then
         [ ! -f "$CONFIGS_DIR/${name}.toml" ] && { printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; }
-        svc enable "$name" >/dev/null 2>&1
+        systemctl enable "${SERVICE_PREFIX}_${name}" >/dev/null 2>&1
         printf "${G}[成功]${NC} frpc_%s 已设置开机自启\n" "$name"
     else
         for n in $(find_connections); do
-            svc enable "$n" >/dev/null 2>&1
+            systemctl enable "${SERVICE_PREFIX}_${n}" >/dev/null 2>&1
             printf "${G}[成功]${NC} frpc_%s 已设置开机自启\n" "$n"
         done
     fi
@@ -444,11 +477,11 @@ cmd_disable() {
     local name=$1
     if [ -n "$name" ]; then
         [ ! -f "$CONFIGS_DIR/${name}.toml" ] && { printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; }
-        svc disable "$name" >/dev/null 2>&1
+        systemctl disable "${SERVICE_PREFIX}_${name}" >/dev/null 2>&1
         printf "${G}[成功]${NC} frpc_%s 已取消开机自启\n" "$name"
     else
         for n in $(find_connections); do
-            svc disable "$n" >/dev/null 2>&1
+            systemctl disable "${SERVICE_PREFIX}_${n}" >/dev/null 2>&1
             printf "${G}[成功]${NC} frpc_%s 已取消开机自启\n" "$n"
         done
     fi
@@ -470,13 +503,21 @@ cmd_list() {
 
     local cnt=0
     for name in $configs; do
-        local st en server st_d en_d
-        st=$(svc status "$name")
-        en=$(svc enabled "$name")
-        server=$(get_server_info "$CONFIGS_DIR/${name}.toml")
+        local conf="$CONFIGS_DIR/${name}.toml"
+        local server
+        server=$(get_server_info "$conf")
 
-        [ "$st" = "active" ] && st_d="${G}● 运行中${NC}" || st_d="${R}● 已停止${NC}"
-        [ "$en" = "enabled" ] && en_d="${G}● 已启用${NC}" || en_d="${R}○ 未启用${NC}"
+        local st_d en_d
+        if systemctl is-active --quiet "${SERVICE_PREFIX}_${name}" 2>/dev/null; then
+            st_d="${G}● 运行中${NC}"
+        else
+            st_d="${R}● 已停止${NC}"
+        fi
+        if systemctl is-enabled --quiet "${SERVICE_PREFIX}_${name}" 2>/dev/null; then
+            en_d="${G}● 已启用${NC}"
+        else
+            en_d="${R}○ 未启用${NC}"
+        fi
 
         printf "  %-16s %-22b %-22b %s\n" "$name" "$st_d" "$en_d" "$server"
         cnt=$((cnt + 1))
@@ -500,7 +541,6 @@ cmd_status() {
             echo "  没有连接"; echo ""
             return
         fi
-        # 简要列表
         cmd_list
     fi
 }
@@ -509,18 +549,23 @@ _status_one() {
     local name=$1 conf="$CONFIGS_DIR/${name}.toml"
     if [ ! -f "$conf" ]; then printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; fi
 
-    local st en pid server
-    st=$(svc status "$name")
-    en=$(svc enabled "$name")
-    pid=$(svc pid "$name")
+    local server
     server=$(get_server_info "$conf")
+    local pid
+    pid=$(systemctl show "${SERVICE_PREFIX}_${name}" --property=MainPID --value 2>/dev/null)
 
     echo ""
-    if [ "$st" = "active" ]; then echo -e "  状态:   ${G}● 运行中${NC}"
-    else echo -e "  状态:   ${R}● 已停止${NC}"; fi
+    if systemctl is-active --quiet "${SERVICE_PREFIX}_${name}" 2>/dev/null; then
+        echo -e "  状态:   ${G}● 运行中${NC}"
+    else
+        echo -e "  状态:   ${R}● 已停止${NC}"
+    fi
 
-    if [ "$en" = "enabled" ]; then echo -e "  自启:   ${G}● 已启用${NC}"
-    else echo -e "  自启:   ${Y}○ 未启用${NC}"; fi
+    if systemctl is-enabled --quiet "${SERVICE_PREFIX}_${name}" 2>/dev/null; then
+        echo -e "  自启:   ${G}● 已启用${NC}"
+    else
+        echo -e "  自启:   ${Y}○ 未启用${NC}"
+    fi
 
     echo "  服务器: $server"
     echo "  版本:   $("$FRPC_BIN" --version 2>&1 | head -1)"
@@ -637,31 +682,17 @@ ENDCONF
 
     ok "配置文件: $conf"
 
-    # 6. 打开编辑器让用户配置代理
+    # 6. 打开编辑器
     echo ""
     info "即将打开编辑器，请配置 proxies 代理规则"
     if command -v nano >/dev/null 2>&1; then
-        echo "  nano 操作: 取消注释并修改代理 → Ctrl+X → Y → 回车 保存"
+        echo "  nano: 取消注释修改代理 → Ctrl+X → Y → 回车"
     else
-        echo "  vi 操作: 按 i 编辑 → ESC → :wq 保存退出"
+        echo "  vi: 按 i 编辑 → ESC → :wq 保存退出"
     fi
     echo ""
 
-    stty sane 2>/dev/null
-    TERM="${TERM:-xterm}"; export TERM
-
-    local editor=""
-    command -v nano >/dev/null 2>&1 && editor="nano"
-    command -v vim  >/dev/null 2>&1 && editor="vim"
-    command -v vi   >/dev/null 2>&1 && [ -z "$editor" ] && editor="vi"
-
-    if [ -n "$editor" ]; then
-        "$editor" "$conf"
-        stty sane 2>/dev/null
-    else
-        warn "无编辑器，配置已生成但未编辑"
-        warn "请手动修改: $conf"
-    fi
+    open_editor "$conf"
 
     # 7. 创建服务
     info "创建服务文件..."
@@ -693,10 +724,11 @@ ENDSVC
     read -r c
     case "$c" in
         y|Y)
-            svc start "$name" >/dev/null 2>&1
+            systemctl start "$svc_name" >/dev/null 2>&1
             sleep 1
-            if [ "$(svc status "$name")" = "active" ]; then
-                printf "${G}[成功]${NC} frpc_%s 已启动 (PID: %s)\n" "$name" "$(svc pid "$name")"
+            if systemctl is-active --quiet "$svc_name" 2>/dev/null; then
+                local pid; pid=$(systemctl show "$svc_name" --property=MainPID --value 2>/dev/null)
+                printf "${G}[成功]${NC} frpc_%s 已启动 (PID: %s)\n" "$name" "$pid"
             else
                 printf "${R}[失败]${NC} 启动失败，查看日志: frpc log recent %s\n" "$name"
             fi
@@ -731,9 +763,9 @@ cmd_remove() {
     read -r c
     if [ "$c" != "YES" ]; then echo "  已取消"; return; fi
 
-    svc stop "$name" 2>/dev/null
-    svc disable "$name" 2>/dev/null
-    rm -f "/etc/systemd/system/frpc_${name}.service"
+    systemctl stop "${SERVICE_PREFIX}_${name}" 2>/dev/null
+    systemctl disable "${SERVICE_PREFIX}_${name}" 2>/dev/null
+    rm -f "/etc/systemd/system/${SERVICE_PREFIX}_${name}.service"
     rm -f "$conf"
     rm -f "${LOG_DIR}/${name}.log"
     systemctl daemon-reload 2>/dev/null
@@ -743,50 +775,44 @@ cmd_remove() {
 # ======================== conf ========================
 
 cmd_conf() {
-    local subcmd=$1 name=$2
+    local arg1=$1 arg2=$2
+    local subcmd="edit" name=""
 
-    case "${subcmd:-edit}" in
-        edit|"")
-            # frpc conf name 或 frpc conf (单连接时自动选择)
+    # 解析参数:
+    # frpc conf           → edit, auto-select single
+    # frpc conf <name>    → edit <name>
+    # frpc conf show      → show, auto-select single
+    # frpc conf show <n>  → show <name>
+    case "$arg1" in
+        show|cat)
+            subcmd="show"
+            name="$arg2"
+            ;;
+        *)
+            subcmd="edit"
+            name="$arg1"
+            ;;
+    esac
+
+    case "$subcmd" in
+        edit)
             [ -z "$name" ] && name=$(single_connection)
             if [ -z "$name" ]; then
-                if [ -z "$subcmd" ] || [ "$subcmd" = "edit" ]; then
-                    printf "${R}[错误]${NC} 请指定连接名: frpc conf <名称>\n"
-                    printf "  运行 frpc list 查看所有连接\n"
-                else
-                    printf "${R}[错误]${NC} 用法: frpc conf <名称>\n"
-                fi
+                printf "${R}[错误]${NC} 请指定连接名: frpc conf <名称>\n"
+                printf "  运行 frpc list 查看所有连接\n"
                 return 1
             fi
             local conf="$CONFIGS_DIR/${name}.toml"
             if [ ! -f "$conf" ]; then printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; fi
 
-            stty sane 2>/dev/null
-            TERM="${TERM:-xterm}"; export TERM
-
-            local editor=""
-            command -v nano >/dev/null 2>&1 && editor="nano"
-            command -v vim  >/dev/null 2>&1 && editor="vim"
-            command -v vi   >/dev/null 2>&1 && [ -z "$editor" ] && editor="vi"
-
-            if [ -z "$editor" ]; then
-                printf "${R}[错误]${NC} 无可用编辑器\n  请手动修改: $conf\n"
-                return 1
-            fi
-
-            printf "${B}[信息]${NC} 使用 ${BOLD}%s${NC} 编辑 frpc_%s 配置\n" "$editor" "$name"
-            echo "  文件: $conf"
-            echo ""
-
-            "$editor" "$conf"
-            stty sane 2>/dev/null
+            open_editor "$conf"
 
             echo ""
             printf "${B}[信息]${NC} 输入 y 重启连接使配置生效，其他键跳过: "
             read -r c
             case "$c" in y|Y) _restart_one "$name" ;; esac
             ;;
-        show|cat)
+        show)
             [ -z "$name" ] && name=$(single_connection)
             if [ -z "$name" ]; then
                 printf "${R}[错误]${NC} 请指定连接名: frpc conf show <名称>\n"
@@ -796,10 +822,6 @@ cmd_conf() {
             if [ ! -f "$conf" ]; then printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; fi
             cat "$conf"
             ;;
-        *)
-            echo "用法: frpc conf [show] <名称>"
-            echo "  frpc conf <名称>     编辑配置"
-            echo "  frpc conf show <名称> 查看配置" ;;
     esac
 }
 
@@ -808,7 +830,6 @@ cmd_conf() {
 cmd_log() {
     local subcmd=$1 name=$2
 
-    # 解析参数：frpc log name / frpc log recent name / frpc log clear name
     case "${subcmd:-live}" in
         recent|tail)
             [ -z "$name" ] && name=$(single_connection)
@@ -851,7 +872,7 @@ cmd_reinstall() {
         printf "${R}[错误]${NC} 安装脚本不存在，请重新下载\n"; exit 1
     fi
     printf "${B}[信息]${NC} 停止所有连接...\n"
-    for n in $(find_connections); do svc stop "$n" 2>/dev/null; done
+    for n in $(find_connections); do systemctl stop "${SERVICE_PREFIX}_${n}" 2>/dev/null; done
     printf "${B}[信息]${NC} 重新安装...\n"
     sh "$INSTALL_DIR/install.sh"
 }
@@ -870,57 +891,14 @@ cmd_uninstall() {
     if [ "$c" != "YES" ]; then echo "  已取消"; return; fi
 
     for n in $(find_connections); do
-        svc stop "$n" 2>/dev/null
-        svc disable "$n" 2>/dev/null
+        systemctl stop "${SERVICE_PREFIX}_${n}" 2>/dev/null
+        systemctl disable "${SERVICE_PREFIX}_${n}" 2>/dev/null
         rm -f "/etc/systemd/system/${SERVICE_PREFIX}_${n}.service"
     done
     systemctl daemon-reload 2>/dev/null
     rm -rf "$INSTALL_DIR"
     rm -f "$0"
     printf "${G}[成功]${NC} frpc 已完全卸载\n"
-}
-
-# ======================== 帮助 ========================
-
-cmd_help() {
-    echo ""
-    printf "  ${BOLD}frpc${NC} - FRP 客户端管理工具 (多服务器)\n"
-    echo ""
-    printf "  ${BOLD}用法:${NC}\n"
-    echo "    frpc <命令> [选项]"
-    echo ""
-    printf "  ${BOLD}连接管理:${NC}\n"
-    echo "    frpc add [name]            添加服务器连接"
-    echo "    frpc remove <name>         删除连接"
-    echo "    frpc list                  列出所有连接"
-    echo ""
-    printf "  ${BOLD}服务控制:${NC}\n"
-    echo "    frpc start [name]          启动 (所有/指定)"
-    echo "    frpc stop [name]           停止 (所有/指定)"
-    echo "    frpc restart [name]        重启 (所有/指定)"
-    echo ""
-    printf "  ${BOLD}开机自启:${NC}\n"
-    echo "    frpc enable [name]         设置开机自启"
-    echo "    frpc disable [name]        取消开机自启"
-    echo ""
-    printf "  ${BOLD}状态查看:${NC}\n"
-    echo "    frpc status [name]         查看运行状态"
-    echo "    frpc version               查看版本"
-    echo ""
-    printf "  ${BOLD}日志管理:${NC}\n"
-    echo "    frpc log <name>            实时日志"
-    echo "    frpc log recent <name>     最近50行"
-    echo "    frpc log clear <name>      清空日志"
-    echo ""
-    printf "  ${BOLD}配置管理:${NC}\n"
-    echo "    frpc conf <name>           编辑配置"
-    echo "    frpc conf show <name>      查看配置"
-    echo ""
-    printf "  ${BOLD}维护:${NC}\n"
-    echo "    frpc reinstall             重新安装"
-    echo "    frpc uninstall             卸载"
-    echo "    frpc help                  显示此帮助"
-    echo ""
 }
 
 # ======================== 主入口 ========================
@@ -981,22 +959,6 @@ do_install() {
     echo "  配置目录:   $CONFIGS_DIR"
     echo "  管理命令:   frpc help"
     echo ""
-
-    # 询问是否添加第一个连接
-    printf "  是否添加第一个服务器连接? [Y/n]: "
-    read -r c
-    case "$c" in
-        n|N|no|NO)
-            echo ""
-            echo "  稍后运行 frpc add 添加服务器连接"
-            ;;
-        *)
-            /usr/local/bin/frpc add
-            ;;
-    esac
-
-    echo ""
-    line
     echo "  快速开始:"
     echo "    frpc add          添加服务器连接"
     echo "    frpc start        启动所有连接"
