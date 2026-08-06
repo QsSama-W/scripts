@@ -32,8 +32,7 @@ die() {
     exit 1
 }
 
-# ======================== 发行版检测（新增） ========================
-# 仅允许 Debian / Ubuntu
+# ======================== 发行版检测 ========================
 
 detect_distro() {
     if [ ! -f /etc/os-release ]; then
@@ -82,12 +81,6 @@ detect_init() {
     fi
 }
 
-detect_pkg() {
-    if command -v apt-get >/dev/null 2>&1; then echo "apt"
-    else echo "unknown"
-    fi
-}
-
 get_arch() {
     case "$(uname -m)" in
         x86_64)  echo "amd64" ;;
@@ -132,8 +125,13 @@ ensure_deps() {
     line
     echo ""
 
-    local cmds="curl wget tar grep openssl iproute2"
+    # ========== 关键修正 ==========
+    # cmds 里放的是「命令名」，用于 command -v 检测
+    # 包名单独用 ss_pkg 跟踪，不混入 cmds
+    # ================================
+    local cmds="curl wget tar grep openssl"
     local need=""
+    local ss_pkg="iproute2"
 
     for cmd in $cmds; do
         if command -v "$cmd" >/dev/null 2>&1; then
@@ -144,9 +142,18 @@ ensure_deps() {
         fi
     done
 
+    # ss 命令单独检测
+    if command -v ss >/dev/null 2>&1; then
+        ok "ss"
+    else
+        fail "ss"
+        need="$need $ss_pkg"
+    fi
+
     echo ""
 
     if [ -n "$need" ]; then
+        # 去重
         local unique=""
         for p in $need; do
             case " $unique " in
@@ -158,9 +165,14 @@ ensure_deps() {
         install_pkgs $unique || die "依赖安装失败，请手动安装后重试"
         echo ""
 
+        # 二次验证：只检查命令名，不检查包名
         for cmd in $cmds; do
             command -v "$cmd" >/dev/null 2>&1 || die "工具 $cmd 安装后仍不可用"
         done
+
+        # ss 单独验证
+        command -v ss >/dev/null 2>&1 || die "工具 ss 安装后仍不可用"
+
         ok "所有依赖已安装并验证"
     else
         ok "所有依赖已就绪"
@@ -325,11 +337,7 @@ download_and_install() {
 
     info "正在下载..."
     local dl_ok=0
-    if command -v wget >/dev/null 2>&1; then
-        if wget -q --show-progress --timeout=30 --tries=3 -O "$tmp/$file" "$url" 2>&1; then
-            dl_ok=1
-        fi
-    elif command -v curl >/dev/null 2>&1; then
+    if command -v curl >/dev/null 2>&1; then
         if curl -# --connect-timeout 30 --retry 3 -L -o "$tmp/$file" "$url" 2>&1; then
             dl_ok=1
         fi
@@ -488,22 +496,8 @@ R='\033[0;31m'
 G='\033[0;32m'
 Y='\033[1;33m'
 B='\033[0;34m'
-C='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
-
-# ======================== 初始化系统 ========================
-
-init_sys() {
-    if [ -d /run/systemd/system ] 2>/dev/null; then echo "systemd"
-    elif [ -f /proc/1/comm ]; then
-        case "$(cat /proc/1/comm 2>/dev/null)" in
-            systemd) echo "systemd" ;;
-            *) echo "unknown" ;;
-        esac
-    else echo "unknown"
-    fi
-}
 
 # ======================== 服务操作 ========================
 
@@ -700,7 +694,6 @@ cmd_info() {
     echo "  配置文件:   $FRPS_CONF"
     echo "  日志文件:   $LOG_FILE"
     echo "  CLI命令:    $0"
-    echo "  初始化系统: $(init_sys)"
     echo ""
     echo "  系统信息:"
     echo "  架构:       $(uname -m)"
@@ -769,18 +762,14 @@ cmd_log() {
         live|""|-f)
             if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
                 tail -f "$LOG_FILE"
-            elif [ "$(init_sys)" = "systemd" ]; then
-                journalctl -u $SERVICE_NAME -f --no-pager
             else
-                printf "${R}[错误]${NC} 日志文件不存在: $LOG_FILE\n"
+                journalctl -u $SERVICE_NAME -f --no-pager
             fi ;;
         recent|tail)
             if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
                 tail -n 50 "$LOG_FILE"
-            elif [ "$(init_sys)" = "systemd" ]; then
-                journalctl -u $SERVICE_NAME -n 50 --no-pager 2>/dev/null
             else
-                printf "${R}[错误]${NC} 无日志\n"
+                journalctl -u $SERVICE_NAME -n 50 --no-pager 2>/dev/null
             fi ;;
         clear|clean)
             echo "  确认清空日志?"
@@ -820,10 +809,10 @@ cmd_conf() {
             echo "  文件: $FRPS_CONF"
             echo ""
 
-            # ===================== 关键修复 =====================
-            # 原脚本 nano 使用了 --const（禁止修改）导致无法编辑
-            # 已移除 --const 和 --linenumbers，直接以可写模式打开
-            # ======================================================
+            # ========== 关键修复 ==========
+            # 原脚本 nano 使用了 --const（只读模式）导致无法编辑
+            # 直接以正常可写模式打开，不加 --const
+            # ================================
 
             case "$editor" in
                 nano)
@@ -959,22 +948,17 @@ do_install() {
     printf "  \033[1mFRP 服务端 一键安装\033[0m\n"
     echo ""
 
-    # 1. 环境检测（含发行版校验）
     full_check || die "环境检测未通过"
     echo ""
 
-    # 2. 依赖
     ensure_deps
 
-    # 3. 下载安装
     download_and_install
     echo ""
 
-    # 4. 服务文件
     setup_service
     echo ""
 
-    # 5. 注册 CLI
     register_cli
     echo ""
 
