@@ -1,10 +1,10 @@
 #!/bin/sh
-# 一键脚本管理器 - 自动从仓库拉取最新脚本列表
+# 一键脚本管理器
 # 用法: sh menu.sh
 
 clear 2>/dev/null || printf '\033[2J\033[H'
 
-VERSION="v1.0.2"
+VERSION="v1.1.0"
 
 cleanup() {
     rm -f /tmp/menu.sh
@@ -27,7 +27,7 @@ NC='\033[0m'
 mkdir -p "$SCRIPTS_DIR"
 
 printf "%b\n" "${CYAN}${BOLD}========================================${NC}"
-printf "%b\n" "${CYAN}${BOLD} 脚本一键管理器 ${VERSION}${NC}"
+printf "%b\n" "${CYAN}${BOLD} 一键脚本管理器 ${VERSION}${NC}"
 printf "%b\n" "${CYAN}${BOLD}========================================${NC}"
 echo ""
 
