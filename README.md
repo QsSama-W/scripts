@@ -33,6 +33,7 @@
 | **安装 / 部署** | |
 | `mount_www.sh` | 挂载数据盘到 /www |
 | `frps_manager.sh` | 安装FRPS |
+| `xxxx.sh` | 安装FRPC |
 | `bt_panel.sh` | 宝塔面板安装 |
 | `1panel.sh` | 1panel安装 |
 | **测试** | |
@@ -214,4 +215,12 @@ Debian / Ubuntu 通用：
 ```bash
 # frps_manager.sh
 wget -O frps_manager.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/frps_manager.sh?t=$RANDOM" && bash frps_manager.sh
+```
+
+### 安装FRPC
+
+Debian / Ubuntu 通用：
+```bash
+# xxxx.sh
+wget -O xxxx.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/xxxx.sh?t=$RANDOM" && bash xxxx.sh
 ```
