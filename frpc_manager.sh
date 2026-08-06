@@ -34,7 +34,6 @@ die() {
 
 detect_distro() {
     [ -f /etc/os-release ] || { echo "unknown"; return; }
-    # shellcheck disable=SC1091
     . /etc/os-release
     case "${ID:-}" in
         debian|ubuntu) echo "debian" ;;
@@ -171,10 +170,6 @@ get_version() {
             https://api.github.com/repos/fatedier/frp/releases/latest 2>/dev/null \
             | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
     fi
-    if [ -z "$v" ] && command -v curl >/dev/null 2>&1; then
-        v=$(curl -sI --connect-timeout 10 "https://github.com/fatedier/frp/releases/latest" 2>/dev/null \
-            | grep -i "^location:" | tr -d '\r' | grep -o 'v[0-9][0-9.]*' | head -1 | sed 's/^v//')
-    fi
     echo "$v"
 }
 
@@ -266,10 +261,8 @@ NC='\033[0m'
 
 # ======================== 工具函数 ========================
 
-# ====== 关键：定义 line 函数 ======
 line() { printf "\033[0;36m────────────────────────────────────────────────────\033[0m\n"; }
 
-# 列出所有连接名
 find_connections() {
     [ -d "$CONFIGS_DIR" ] || return
     for f in "$CONFIGS_DIR"/*.toml; do
@@ -278,13 +271,11 @@ find_connections() {
     done
 }
 
-# 从配置文件读取值
 get_conf_val() {
     local file=$1 key=$2
     grep "^${key}" "$file" 2>/dev/null | head -1 | sed "s/^${key}[[:space:]]*=[[:space:]]*//;s/^\"//;s/\"$//"
 }
 
-# 获取服务器信息
 get_server_info() {
     local conf=$1
     local addr port
@@ -293,7 +284,6 @@ get_server_info() {
     echo "${addr:-?}:${port:-7000}"
 }
 
-# 验证连接名
 valid_name() {
     case "$1" in
         "") return 1 ;;
@@ -302,44 +292,15 @@ valid_name() {
     esac
 }
 
-# 统计连接数
 count_connections() {
     local n=0
     for _ in $(find_connections); do n=$((n + 1)); done
     echo "$n"
 }
 
-# 获取唯一连接名（仅一个时返回）
 single_connection() {
     local cnt; cnt=$(count_connections)
     [ "$cnt" -eq 1 ] && find_connections
-}
-
-# ====== 打开编辑器的统一函数 ======
-open_editor() {
-    local file=$1
-    stty sane 2>/dev/null
-    TERM="${TERM:-xterm}"
-    export TERM
-
-    local editor=""
-    command -v nano >/dev/null 2>&1 && editor="nano"
-    command -v vim  >/dev/null 2>&1 && editor="vim"
-    command -v vi   >/dev/null 2>&1 && [ -z "$editor" ] && editor="vi"
-
-    if [ -z "$editor" ]; then
-        printf "${R}[错误]${NC} 没有可用的文本编辑器\n"
-        echo "  请安装: apt install nano"
-        return 1
-    fi
-
-    printf "${B}[信息]${NC} 使用 ${BOLD}%s${NC} 编辑\n" "$editor"
-    echo "  文件: $file"
-    echo ""
-
-    "$editor" "$file"
-    stty sane 2>/dev/null
-    return 0
 }
 
 # ======================== 帮助 ========================
@@ -352,36 +313,36 @@ cmd_help() {
     echo "    frpc <命令> [选项]"
     echo ""
     printf "  ${BOLD}连接管理:${NC}\n"
-    echo "    frpc add [name]            添加服务器连接"
-    echo "    frpc remove <name>         删除连接"
-    echo "    frpc list                  列出所有连接"
+    echo "    frpc add                  添加服务器连接"
+    echo "    frpc remove <name>        删除连接"
+    echo "    frpc list                 列出所有连接"
     echo ""
     printf "  ${BOLD}服务控制:${NC}\n"
-    echo "    frpc start [name]          启动 (所有/指定)"
-    echo "    frpc stop [name]           停止 (所有/指定)"
-    echo "    frpc restart [name]        重启 (所有/指定)"
+    echo "    frpc start [name]         启动 (全部/指定)"
+    echo "    frpc stop [name]          停止 (全部/指定)"
+    echo "    frpc restart [name]       重启 (全部/指定)"
     echo ""
     printf "  ${BOLD}开机自启:${NC}\n"
-    echo "    frpc enable [name]         设置开机自启"
-    echo "    frpc disable [name]        取消开机自启"
+    echo "    frpc enable [name]        设置开机自启"
+    echo "    frpc disable [name]       取消开机自启"
     echo ""
     printf "  ${BOLD}状态查看:${NC}\n"
-    echo "    frpc status [name]         查看运行状态"
-    echo "    frpc version               查看版本"
+    echo "    frpc status [name]        查看运行状态"
+    echo "    frpc version              查看版本"
     echo ""
     printf "  ${BOLD}日志管理:${NC}\n"
-    echo "    frpc log <name>            实时日志"
-    echo "    frpc log recent <name>     最近50行"
-    echo "    frpc log clear <name>      清空日志"
+    echo "    frpc log <name>           实时日志"
+    echo "    frpc log recent <name>    最近50行"
+    echo "    frpc log clear <name>     清空日志"
     echo ""
     printf "  ${BOLD}配置管理:${NC}\n"
-    echo "    frpc conf <name>           编辑配置"
-    echo "    frpc conf show <name>      查看配置"
+    echo "    frpc conf <name>          编辑配置"
+    echo "    frpc conf show <name>     查看配置"
     echo ""
     printf "  ${BOLD}维护:${NC}\n"
-    echo "    frpc reinstall             重新安装"
-    echo "    frpc uninstall             卸载"
-    echo "    frpc help                  显示此帮助"
+    echo "    frpc reinstall            重新安装"
+    echo "    frpc uninstall            卸载"
+    echo "    frpc help                 显示此帮助"
     echo ""
 }
 
@@ -411,7 +372,7 @@ _start_one() {
         local pid; pid=$(systemctl show "${SERVICE_PREFIX}_${name}" --property=MainPID --value 2>/dev/null)
         printf "${G}[成功]${NC} frpc_%s 已启动 (PID: %s)\n" "$name" "$pid"
     else
-        printf "${R}[失败]${NC} frpc_%s 启动失败 (frpc log recent %s 查看日志)\n" "$name" "$name"
+        printf "${R}[失败]${NC} frpc_%s 启动失败\n" "$name"
     fi
 }
 
@@ -419,11 +380,8 @@ _start_one() {
 
 cmd_stop() {
     local name=$1
-    if [ -n "$name" ]; then
-        _stop_one "$name"
-    else
-        for n in $(find_connections); do _stop_one "$n"; done
-    fi
+    if [ -n "$name" ]; then _stop_one "$name"
+    else for n in $(find_connections); do _stop_one "$n"; done; fi
 }
 
 _stop_one() {
@@ -437,11 +395,8 @@ _stop_one() {
 
 cmd_restart() {
     local name=$1
-    if [ -n "$name" ]; then
-        _restart_one "$name"
-    else
-        for n in $(find_connections); do _restart_one "$n"; done
-    fi
+    if [ -n "$name" ]; then _restart_one "$name"
+    else for n in $(find_connections); do _restart_one "$n"; done; fi
 }
 
 _restart_one() {
@@ -504,8 +459,7 @@ cmd_list() {
     local cnt=0
     for name in $configs; do
         local conf="$CONFIGS_DIR/${name}.toml"
-        local server
-        server=$(get_server_info "$conf")
+        local server; server=$(get_server_info "$conf")
 
         local st_d en_d
         if systemctl is-active --quiet "${SERVICE_PREFIX}_${name}" 2>/dev/null; then
@@ -532,15 +486,11 @@ cmd_list() {
 
 cmd_status() {
     local name=$1
-
     if [ -n "$name" ]; then
         _status_one "$name"
     else
         local cnt; cnt=$(count_connections)
-        if [ "$cnt" -eq 0 ]; then
-            echo "  没有连接"; echo ""
-            return
-        fi
+        if [ "$cnt" -eq 0 ]; then echo "  没有连接"; echo ""; return; fi
         cmd_list
     fi
 }
@@ -549,10 +499,8 @@ _status_one() {
     local name=$1 conf="$CONFIGS_DIR/${name}.toml"
     if [ ! -f "$conf" ]; then printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; fi
 
-    local server
-    server=$(get_server_info "$conf")
-    local pid
-    pid=$(systemctl show "${SERVICE_PREFIX}_${name}" --property=MainPID --value 2>/dev/null)
+    local server; server=$(get_server_info "$conf")
+    local pid; pid=$(systemctl show "${SERVICE_PREFIX}_${name}" --property=MainPID --value 2>/dev/null)
 
     echo ""
     if systemctl is-active --quiet "${SERVICE_PREFIX}_${name}" 2>/dev/null; then
@@ -593,15 +541,9 @@ cmd_add() {
         printf "  连接名称 (英文/数字/下划线): "
         read -r name
         name=$(echo "$name" | tr -d ' ')
-        if [ -z "$name" ]; then
-            printf "${R}    名称不能为空${NC}\n"; continue
-        fi
-        if ! valid_name "$name"; then
-            printf "${R}    名称只能包含英文、数字、下划线${NC}\n"; continue
-        fi
-        if [ -f "$CONFIGS_DIR/${name}.toml" ]; then
-            printf "${R}    连接 '%s' 已存在${NC}\n" "$name"; continue
-        fi
+        if [ -z "$name" ]; then printf "${R}    名称不能为空${NC}\n"; continue; fi
+        if ! valid_name "$name"; then printf "${R}    名称只能包含英文、数字、下划线${NC}\n"; continue; fi
+        if [ -f "$CONFIGS_DIR/${name}.toml" ]; then printf "${R}    连接 '%s' 已存在${NC}\n" "$name"; continue; fi
         break
     done
 
@@ -652,7 +594,6 @@ transport.poolCount = 5
 transport.tcpMux = true
 
 # ==================== 代理配置 ====================
-# 取消注释并修改你需要的代理规则
 # 更多类型参见: https://gofrp.org/zh-cn/docs/
 
 # --- SSH ---
@@ -670,29 +611,60 @@ transport.tcpMux = true
 #localIP = "127.0.0.1"
 #localPort = 80
 #customDomains = ["your.domain.com"]
-
-# --- HTTPS ---
-#[[proxies]]
-#name = "web-https"
-#type = "https"
-#localIP = "127.0.0.1"
-#localPort = 443
-#customDomains = ["your.domain.com"]
 ENDCONF
 
     ok "配置文件: $conf"
 
-    # 6. 打开编辑器
+    # 6. 编辑器 (完全照搬 frps 已验证的模式)
     echo ""
     info "即将打开编辑器，请配置 proxies 代理规则"
-    if command -v nano >/dev/null 2>&1; then
-        echo "  nano: 取消注释修改代理 → Ctrl+X → Y → 回车"
-    else
-        echo "  vi: 按 i 编辑 → ESC → :wq 保存退出"
-    fi
-    echo ""
 
-    open_editor "$conf"
+    # 确保 nano 可用
+    if ! command -v nano >/dev/null 2>&1; then
+        info "安装 nano 编辑器..."
+        apt-get update -qq 2>/dev/null && apt-get install -y -qq nano 2>/dev/null
+    fi
+
+    local editor=""
+    if command -v nano >/dev/null 2>&1; then
+        editor="nano"
+    elif command -v vim >/dev/null 2>&1; then
+        editor="vim"
+    elif command -v vi >/dev/null 2>&1; then
+        editor="vi"
+    fi
+
+    if [ -n "$editor" ]; then
+        printf "${B}[信息]${NC} 使用 ${BOLD}%s${NC} 编辑配置\n" "$editor"
+        echo "  文件: $conf"
+        if [ "$editor" = "nano" ]; then
+            echo "  nano 操作: Ctrl+X → Y → 回车 保存"
+        else
+            echo "  vi 操作: i 进入编辑 → ESC → :wq 保存退出"
+        fi
+        echo ""
+
+        # ====== 与 frps 完全一致的编辑器调用模式 ======
+        stty sane 2>/dev/null
+        TERM="${TERM:-xterm}"
+        export TERM
+
+        case "$editor" in
+            nano)
+                LANG=C.UTF-8 LC_ALL=C.UTF-8 nano "$conf"
+                ;;
+            vim)
+                LANG=C.UTF-8 LC_ALL=C.UTF-8 vim "$conf"
+                ;;
+            vi)
+                LANG=C.UTF-8 LC_ALL=C.UTF-8 vi "$conf"
+                ;;
+        esac
+
+        stty sane 2>/dev/null
+    else
+        warn "无编辑器，请手动修改: $conf"
+    fi
 
     # 7. 创建服务
     info "创建服务文件..."
@@ -755,9 +727,9 @@ cmd_remove() {
 
     echo ""
     printf "${Y}[警告]${NC} 即将删除连接 '%s'，将移除:\n" "$name"
-    echo "  - 配置文件: $conf"
-    echo "  - 日志文件: ${LOG_DIR}/${name}.log"
-    echo "  - 服务文件: /etc/systemd/system/frpc_${name}.service"
+    echo "  - 配置: $conf"
+    echo "  - 日志: ${LOG_DIR}/${name}.log"
+    echo "  - 服务: /etc/systemd/system/frpc_${name}.service"
     echo ""
     printf "  输入 YES 确认: "
     read -r c
@@ -778,11 +750,7 @@ cmd_conf() {
     local arg1=$1 arg2=$2
     local subcmd="edit" name=""
 
-    # 解析参数:
-    # frpc conf           → edit, auto-select single
-    # frpc conf <name>    → edit <name>
-    # frpc conf show      → show, auto-select single
-    # frpc conf show <n>  → show <name>
+    # 解析: frpc conf name / frpc conf show name / frpc conf (单连接自动选择)
     case "$arg1" in
         show|cat)
             subcmd="show"
@@ -805,7 +773,29 @@ cmd_conf() {
             local conf="$CONFIGS_DIR/${name}.toml"
             if [ ! -f "$conf" ]; then printf "${R}[错误]${NC} 连接 '%s' 不存在\n" "$name"; return 1; fi
 
-            open_editor "$conf"
+            printf "${B}[信息]${NC} 编辑 frpc_%s 配置\n" "$name"
+            echo "  文件: $conf"
+            echo ""
+
+            # ====== 与 frps 完全一致的编辑器调用模式 ======
+            stty sane 2>/dev/null
+            TERM="${TERM:-xterm}"
+            export TERM
+
+            local editor=""
+            if command -v nano >/dev/null 2>&1; then
+                LANG=C.UTF-8 LC_ALL=C.UTF-8 nano "$conf"
+            elif command -v vim >/dev/null 2>&1; then
+                LANG=C.UTF-8 LC_ALL=C.UTF-8 vim "$conf"
+            elif command -v vi >/dev/null 2>&1; then
+                LANG=C.UTF-8 LC_ALL=C.UTF-8 vi "$conf"
+            else
+                printf "${R}[错误]${NC} 没有可用的文本编辑器\n"
+                echo "  请安装: apt install nano"
+                return 1
+            fi
+
+            stty sane 2>/dev/null
 
             echo ""
             printf "${B}[信息]${NC} 输入 y 重启连接使配置生效，其他键跳过: "
@@ -882,9 +872,9 @@ cmd_reinstall() {
 cmd_uninstall() {
     echo ""
     printf "${Y}[警告]${NC} 即将卸载 frpc，将删除:\n"
-    echo "  - $INSTALL_DIR (二进制、配置、日志)"
+    echo "  - $INSTALL_DIR"
     echo "  - 所有 frpc_* 服务文件"
-    echo "  - $0 (CLI 命令)"
+    echo "  - $0"
     echo ""
     printf "  输入 YES 确认卸载: "
     read -r c
