@@ -43,7 +43,7 @@ detect_distro() {
     . /etc/os-release
     local id="${ID:-}" id_like="${ID_LIKE:-}"
     case "$id" in
-        debian|ubuntu)  echo "debian" ;;
+        debian|ubuntu) echo "debian" ;;
         *)
             case "$id_like" in
                 *debian*|*ubuntu*) echo "debian" ;;
@@ -125,13 +125,20 @@ ensure_deps() {
     line
     echo ""
 
-    # ========== 关键修正 ==========
-    # cmds 里放的是「命令名」，用于 command -v 检测
-    # 包名单独用 ss_pkg 跟踪，不混入 cmds
-    # ================================
+    # cmds 只放「命令名」，用于 command -v 检测
+    # nano 单独加到安装列表，确保编辑器可用
     local cmds="curl wget tar grep openssl"
     local need=""
     local ss_pkg="iproute2"
+    local editor_pkg="nano"
+
+    # 检测编辑器：优先确保 nano 可用
+    if command -v nano >/dev/null 2>&1; then
+        ok "nano (编辑器)"
+    else
+        fail "nano (编辑器)"
+        need="$need $editor_pkg"
+    fi
 
     for cmd in $cmds; do
         if command -v "$cmd" >/dev/null 2>&1; then
@@ -165,13 +172,12 @@ ensure_deps() {
         install_pkgs $unique || die "依赖安装失败，请手动安装后重试"
         echo ""
 
-        # 二次验证：只检查命令名，不检查包名
+        # 二次验证：只检查命令名
         for cmd in $cmds; do
             command -v "$cmd" >/dev/null 2>&1 || die "工具 $cmd 安装后仍不可用"
         done
-
-        # ss 单独验证
         command -v ss >/dev/null 2>&1 || die "工具 ss 安装后仍不可用"
+        command -v nano >/dev/null 2>&1 || die "编辑器 nano 安装后仍不可用"
 
         ok "所有依赖已安装并验证"
     else
@@ -518,16 +524,6 @@ svc() {
     esac
 }
 
-# ======================== 编辑器检测 ========================
-
-pick_editor() {
-    local e
-    for e in nano vim vi; do
-        command -v "$e" >/dev/null 2>&1 && { echo "$e"; return; }
-    done
-    echo ""
-}
-
 # ======================== 帮助 ========================
 
 cmd_help() {
@@ -797,40 +793,47 @@ cmd_conf() {
                 printf "${R}[错误]${NC} 配置文件不存在: $FRPS_CONF\n"
                 return 1
             fi
-            local editor
-            editor=$(pick_editor)
+
+            # ====== 关键修复 ======
+            # 1. 重置终端到正常状态，避免编辑器无法接收键盘输入
+            # 2. 确保 TERM 环境变量有值（Docker 容器中常为空）
+            stty sane 2>/dev/null
+            TERM="${TERM:-xterm}"
+            export TERM
+            # ========================
+
+            local editor=""
+            if command -v nano >/dev/null 2>&1; then
+                editor="nano"
+            elif command -v vim >/dev/null 2>&1; then
+                editor="vim"
+            elif command -v vi >/dev/null 2>&1; then
+                editor="vi"
+            fi
+
             if [ -z "$editor" ]; then
                 printf "${R}[错误]${NC} 没有可用的文本编辑器\n"
-                echo "  请手动修改: $FRPS_CONF"
-                echo "  或安装编辑器: apt install nano"
+                echo "  请安装: apt install nano"
+                echo "  或手动修改: $FRPS_CONF"
                 return 1
             fi
+
             printf "${B}[信息]${NC} 使用 ${BOLD}%s${NC} 编辑配置\n" "$editor"
             echo "  文件: $FRPS_CONF"
+            if [ "$editor" = "nano" ]; then
+                echo "  提示: 编辑完成后按 Ctrl+X，然后按 Y 保存"
+            elif [ "$editor" = "vi" ] || [ "$editor" = "vim" ]; then
+                echo "  提示: 按 i 进入编辑模式，ESC 后输入 :wq 保存退出"
+            fi
             echo ""
 
-            # ========== 关键修复 ==========
-            # 原脚本 nano 使用了 --const（只读模式）导致无法编辑
-            # 直接以正常可写模式打开，不加 --const
-            # ================================
+            # 最简调用：直接 "$editor" 文件，不加任何多余参数
+            "$editor" "$FRPS_CONF"
 
-            case "$editor" in
-                nano)
-                    LANG=C.UTF-8 LC_ALL=C.UTF-8 nano "$FRPS_CONF"
-                    ;;
-                vim)
-                    LANG=C.UTF-8 LC_ALL=C.UTF-8 vim "$FRPS_CONF"
-                    ;;
-                vi)
-                    LANG=C.UTF-8 LC_ALL=C.UTF-8 vi "$FRPS_CONF"
-                    ;;
-                *)
-                    LANG=C.UTF-8 LC_ALL=C.UTF-8 "$editor" "$FRPS_CONF"
-                    ;;
-            esac
+            # 编辑器退出后恢复终端
+            stty sane 2>/dev/null
 
             echo ""
-            printf "${B}[信息]${NC} 配置已修改\n"
             printf "${B}[信息]${NC} 输入 y 重启服务使配置生效，其他键跳过: "
             read -r c
             case "$c" in
