@@ -32,6 +32,7 @@
 | `cftun-uninstall.sh` | 卸载CloudFlared Tunnel |
 | **安装 / 部署** | |
 | `mount_www.sh` | 挂载数据盘到 /www |
+| `frps_manager.sh` | 安装FRPS |
 | `bt_panel.sh` | 宝塔面板安装 |
 | `1panel.sh` | 1panel安装 |
 | **测试** | |
@@ -205,4 +206,12 @@ Debian / Ubuntu 通用：
 ```bash
 # wendu-monitor.sh
 wget -O wendu-monitor.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/wendu-monitor.sh?t=$RANDOM" && bash wendu-monitor.sh
+```
+
+### 安装FRPS
+
+Debian / Ubuntu 通用：
+```bash
+# frps_manager.sh
+wget -O frps_manager.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/frps_manager.sh?t=$RANDOM" && bash frps_manager.sh
 ```
