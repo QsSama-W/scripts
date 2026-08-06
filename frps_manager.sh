@@ -455,10 +455,10 @@ auth.token = "${token}"
 # vhostHTTPPort = 8080
 # vhostHTTPSPort = 8443
 
-webServer.addr = "0.0.0.0"
-webServer.port = 7500
-webServer.user = "admin"
-webServer.password = "${wp}"
+# webServer.addr = "0.0.0.0"
+# webServer.port = 7500
+# webServer.user = "admin"
+# webServer.password = "${wp}"
 
 log.to = "${LOG_FILE}"
 log.level = "info"
