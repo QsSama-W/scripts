@@ -27,7 +27,7 @@ NC='\033[0m'
 mkdir -p "$SCRIPTS_DIR"
 
 printf "%b\n" "${CYAN}${BOLD}========================================${NC}"
-printf "%b\n" "${CYAN}${BOLD}    脚本一键管理器 %s - 自动同步最新版本${NC}" "$VERSION"
+printf "%b\n" "${CYAN}${BOLD}    脚本一键管理器 ${VERSION} - 自动同步最新版本${NC}"
 printf "%b\n" "${CYAN}${BOLD}========================================${NC}"
 echo ""
 
