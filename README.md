@@ -18,6 +18,7 @@
 | `cleanup.sh` | Debian/Alpine 系统垃圾清理 |
 | `bbr.sh` | 启用 BBR 拥塞控制算法 |
 | `wendu-monitor.sh` | Linux设备温度监控(仅物理机可用/测试版) |
+| `jiance.sh` | 进程管理器 |
 | **网络 / IPv6** | |
 | `v6set.sh` | IPv6 地址管理工具 |
 | `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
@@ -223,4 +224,12 @@ Debian / Ubuntu 通用：
 ```bash
 # frpc_manager.sh
 wget -O frpc_manager.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/frpc_manager.sh?t=$RANDOM" && bash frpc_manager.sh
+```
+
+### 进程管理器
+
+Debian / Ubuntu 通用：
+```bash
+# jiance.sh
+wget -O jiance.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/jiance.sh?t=$RANDOM" && bash jiance.sh
 ```
