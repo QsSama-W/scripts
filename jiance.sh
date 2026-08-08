@@ -84,6 +84,50 @@ check_root_warn() {
     fi
 }
 
+# ==================== CPU 使用率采集 ====================
+# 两次采样间隔 0.5 秒，计算真实瞬时 CPU 使用率
+get_cpu_usage() {
+    local cpu_line1 cpu_line2
+    cpu_line1=$(grep '^cpu ' /proc/stat)
+    sleep 0.5
+    cpu_line2=$(grep '^cpu ' /proc/stat)
+
+    # 取 user nice system idle iowait irq softirq
+    local vals1 vals2
+    read -r _ vals1 <<< "$cpu_line1"
+    read -r _ vals2 <<< "$cpu_line2"
+
+    local u1 n1 s1 id1 io1 ir1 sq1
+    read -r u1 n1 s1 id1 io1 ir1 sq1 <<< "$vals1"
+    local u2 n2 s2 id2 io2 ir2 sq2
+    read -r u2 n2 s2 id2 io2 ir2 sq2 <<< "$vals2"
+
+    local total1 total2 idle_d total_d usage
+    total1=$(( u1 + n1 + s1 + id1 + io1 + ir1 + sq1 ))
+    total2=$(( u2 + n2 + s2 + id2 + io2 + ir2 + sq2 ))
+    idle_d=$(( id2 - id1 ))
+    total_d=$(( total2 - total1 ))
+
+    if (( total_d == 0 )); then
+        usage=0
+    else
+        usage=$(( (total_d - idle_d) * 100 / total_d ))
+    fi
+    echo "$usage"
+}
+
+# 带颜色的 CPU 百分比
+cpu_color() {
+    local usage="$1"
+    if (( usage < 50 )); then
+        echo -e "${GREEN}${usage}%${RESET}"
+    elif (( usage < 80 )); then
+        echo -e "${YELLOW}${usage}%${RESET}"
+    else
+        echo -e "${RED}${usage}%${RESET}"
+    fi
+}
+
 # ==================== 帮助页面 ====================
 show_help() {
     clear_screen
@@ -166,14 +210,16 @@ show_help() {
 
 # ==================== 系统信息 ====================
 sys_summary() {
-    local total_cpu used_mem total_mem uptime_str load mem_pct
+    local used_mem total_mem uptime_str load mem_pct usage
 
-    total_cpu=$(top -bn1 2>/dev/null | grep "Cpu(s)" | awk '{print $2}' | cut -d'.' -f1)
-    total_cpu="${total_cpu:-0}"
+    # CPU 使用率（0.5秒采样）
+    usage=$(get_cpu_usage)
 
+    # 内存
     read -r total_mem used_mem _ <<< "$(free -m | awk '/Mem:/{print $2, $3}')"
     mem_pct=$(( used_mem * 100 / total_mem ))
 
+    # 运行时间 & 负载
     uptime_str=$(uptime -p 2>/dev/null || uptime | sed 's/.*up/up/' | sed 's/,.*//')
     load=$(awk '{printf "%s %s %s", $1, $2, $3}' /proc/loadavg 2>/dev/null || echo "N/A")
 
@@ -186,6 +232,7 @@ sys_summary() {
 
     echo -e "  ${DIM}运行时间:${RESET} ${uptime_str}"
     echo -e "  ${DIM}系统负载:${RESET} ${load}"
+    echo -e "  ${DIM}CPU 使用:${RESET} $(cpu_color "$usage")"
     echo -e "  ${DIM}内存使用:${RESET} ${GREEN}${used_mem}M${RESET} / ${total_mem}M ${DIM}(${mem_pct}%)${RESET}"
     echo -e "  ${DIM}空闲超时:${RESET} ${timeout_info}"
     echo ""
@@ -497,14 +544,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ==================== 入口：支持 jc help 直接调用 ====================
-# 先解析第一个位置参数（不走 getopts）
+# ==================== 入口 ====================
 FIRST_ARG="${1:-}"
 if [[ "$FIRST_ARG" == "help" || "$FIRST_ARG" == "--help" || "$FIRST_ARG" == "-h" ]]; then
-    # -h 走帮助，其他参数继续正常解析
     if [[ "$FIRST_ARG" != "-h" ]]; then
         shift
-        # 还可以接受 -t -n 等前置选项
         while getopts "t:n:" opt "${@}" 2>/dev/null; do
             case "$opt" in
                 t) IDLE_TIMEOUT="$OPTARG" ;;
@@ -512,21 +556,16 @@ if [[ "$FIRST_ARG" == "help" || "$FIRST_ARG" == "--help" || "$FIRST_ARG" == "-h"
             esac
         done
     fi
-    # help 模式不参与超时机制，直接展示
     show_help
     exit 0
 fi
 
-# 正常 getopts 解析
 while getopts "t:n:h" opt; do
     case "$opt" in
         t) IDLE_TIMEOUT="$OPTARG" ;;
         n) SHOW_COUNT="$OPTARG" ;;
         h) show_help; exit 0 ;;
-        *) usage() {
-            echo "用法: jc [-t 秒] [-n 数量] [help] [-h]"
-            exit 1
-          }; usage ;;
+        *) usage() { echo "用法: jc [-t 秒] [-n 数量] [help] [-h]"; exit 1; }; usage ;;
     esac
 done
 
@@ -537,6 +576,5 @@ if ! [[ "$SHOW_COUNT" =~ ^[0-9]+$ ]] || (( SHOW_COUNT < 1 )); then
     echo "错误: -n 参数必须为正整数" >&2; exit 1
 fi
 
-# ==================== 启动 ====================
 printf '\033[?25l'
 main_loop
