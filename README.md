@@ -19,6 +19,7 @@
 | `bbr.sh` | 启用 BBR 拥塞控制算法 |
 | `wendu-monitor.sh` | Linux设备温度监控(仅物理机可用/测试版) |
 | `jiance.sh` | 进程管理器 |
+| `tmpfs.sh` | 配置tmp缓存 |
 | **网络 / IPv6** | |
 | `v6set.sh` | IPv6 地址管理工具 |
 | `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
@@ -232,4 +233,12 @@ Debian / Ubuntu 通用：
 ```bash
 # jiance.sh
 wget -O jiance.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/jiance.sh?t=$RANDOM" && bash jiance.sh
+```
+
+### 配置tmp缓存
+
+Debian / Ubuntu 通用：
+```bash
+# tmpfs.sh
+wget -O tmpfs.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/tmpfs.sh?t=$RANDOM" && bash tmpfs.sh
 ```
