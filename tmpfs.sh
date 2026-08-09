@@ -6,12 +6,6 @@ if ! grep -qi 'debian' /etc/os-release 2>/dev/null; then
     exit 1
 fi
 
-# 检查 tmp.mount 单元是否存在
-if ! systemctl list-unit-files tmp.mount.service &>/dev/null; then
-    echo "错误: tmp.mount 单元不存在，无法应用配置。"
-    exit 1
-fi
-
 # 记录修改前的 tmpfs 大小
 before_size=$(findmnt -n /tmp -o OPTIONS | grep -oP 'size=\K[^,]+')
 
@@ -24,9 +18,11 @@ cat > /etc/systemd/system/tmp.mount.d/override.conf << 'EOF'
 Options=mode=1777,relatime,nosuid,nodev,size=2G
 EOF
 
-# 重新加载 systemd 并重启 tmp.mount
+# 重新加载 systemd
 systemctl daemon-reload
-systemctl restart tmp.mount
+
+# 尝试重启 tmp.mount，失败也不影响（drop-in 重启后生效）
+systemctl restart tmp.mount 2>/dev/null
 
 # 记录修改后的 tmpfs 大小
 after_size=$(findmnt -n /tmp -o OPTIONS | grep -oP 'size=\K[^,]+')
