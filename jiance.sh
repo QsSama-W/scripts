@@ -87,33 +87,22 @@ check_root_warn() {
 # ==================== CPU 使用率采集 ====================
 # 两次采样间隔 0.5 秒，计算真实瞬时 CPU 使用率
 get_cpu_usage() {
-    local cpu_line1 cpu_line2
-    cpu_line1=$(grep '^cpu ' /proc/stat)
+    local -a vals1 vals2
+    read -r -a vals1 <<< "$(grep '^cpu ' /proc/stat)"
     sleep 0.5
-    cpu_line2=$(grep '^cpu ' /proc/stat)
+    read -r -a vals2 <<< "$(grep '^cpu ' /proc/stat)"
 
-    # 取 user nice system idle iowait irq softirq
-    local vals1 vals2
-    read -r _ vals1 <<< "$cpu_line1"
-    read -r _ vals2 <<< "$cpu_line2"
-
-    local u1 n1 s1 id1 io1 ir1 sq1
-    read -r u1 n1 s1 id1 io1 ir1 sq1 <<< "$vals1"
-    local u2 n2 s2 id2 io2 ir2 sq2
-    read -r u2 n2 s2 id2 io2 ir2 sq2 <<< "$vals2"
-
-    local total1 total2 idle_d total_d usage
-    total1=$(( u1 + n1 + s1 + id1 + io1 + ir1 + sq1 ))
-    total2=$(( u2 + n2 + s2 + id2 + io2 + ir2 + sq2 ))
-    idle_d=$(( id2 - id1 ))
-    total_d=$(( total2 - total1 ))
+    # vals[0]=cpu  [1]=user  [2]=nice  [3]=system  [4]=idle  [5]=iowait  [6]=irq  [7]=softirq
+    local total1=$(( vals1[1] + vals1[2] + vals1[3] + vals1[4] + vals1[5] + vals1[6] + vals1[7] ))
+    local total2=$(( vals2[1] + vals2[2] + vals2[3] + vals2[4] + vals2[5] + vals2[6] + vals2[7] ))
+    local idle_d=$(( vals2[4] - vals1[4] ))
+    local total_d=$(( total2 - total1 ))
 
     if (( total_d == 0 )); then
-        usage=0
+        echo 0
     else
-        usage=$(( (total_d - idle_d) * 100 / total_d ))
+        echo $(( (total_d - idle_d) * 100 / total_d ))
     fi
-    echo "$usage"
 }
 
 # 带颜色的 CPU 百分比
