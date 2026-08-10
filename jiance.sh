@@ -6,6 +6,19 @@
 
 set -euo pipefail
 
+JC_BIN="/usr/local/bin/jc"
+
+# ==================== 自动注册 ====================
+# 检测当前执行路径，如果不是全局命令路径，则自动复制并授权
+if [[ "$(readlink -f "$0" 2>/dev/null || echo "$0")" != "$JC_BIN" ]]; then
+    echo -e "\033[1;36m检测到首次运行，正在自动注册全局命令 'jc'...\033[0m"
+    cp "$0" "$JC_BIN"
+    chmod +x "$JC_BIN"
+    echo -e "\033[1;32m注册成功！以后可以在终端任意位置直接输入 jc 调起面板。\033[0m"
+    sleep 1.5
+    exec "$JC_BIN" "$@" # 替换当前进程，直接启动安装好的 CLI
+fi
+
 # ==================== 颜色 ====================
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -16,7 +29,6 @@ DIM='\033[2m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
-JC_BIN="/usr/local/bin/jc"
 IDLE_TIMEOUT=120
 SHOW_COUNT=10
 
@@ -49,7 +61,7 @@ auto_exit() {
     clear_screen
     echo ""
     echo -e "  ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo -e "  ${YELLOW}  ⏱  空闲 ${IDLE_TIMEOUT} 秒，jc 自动退出${RESET}"
+    echo -e "    ⏱  空闲 ${IDLE_TIMEOUT} 秒，jc 自动退出${RESET}"
     echo -e "  ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
     exit 0
@@ -85,14 +97,12 @@ check_root_warn() {
 }
 
 # ==================== CPU 使用率采集 ====================
-# 两次采样间隔 0.5 秒，计算真实瞬时 CPU 使用率
 get_cpu_usage() {
     local -a vals1 vals2
     read -r -a vals1 <<< "$(grep '^cpu ' /proc/stat)"
     sleep 0.5
     read -r -a vals2 <<< "$(grep '^cpu ' /proc/stat)"
 
-    # vals[0]=cpu  [1]=user  [2]=nice  [3]=system  [4]=idle  [5]=iowait  [6]=irq  [7]=softirq
     local total1=$(( vals1[1] + vals1[2] + vals1[3] + vals1[4] + vals1[5] + vals1[6] + vals1[7] ))
     local total2=$(( vals2[1] + vals2[2] + vals2[3] + vals2[4] + vals2[5] + vals2[6] + vals2[7] ))
     local idle_d=$(( vals2[4] - vals1[4] ))
@@ -105,7 +115,6 @@ get_cpu_usage() {
     fi
 }
 
-# 带颜色的 CPU 百分比
 cpu_color() {
     local usage="$1"
     if (( usage < 50 )); then
@@ -129,14 +138,14 @@ show_help() {
 
     echo -e "  ${BOLD}${WHITE}命令${RESET}"
     echo -e "    ${GREEN}无参数${RESET}       启动交互式进程管理器"
-    echo -e "    ${GREEN}help${RESET}        显示本帮助信息"
+    echo -e "    ${GREEN}help${RESET}         显示本帮助信息"
     echo ""
 
     echo -e "  ${BOLD}${WHITE}选项${RESET}"
     echo -e "    ${GREEN}-t <秒>${RESET}     设置空闲超时时间 (默认: 120秒)"
     echo -e "                       ${DIM}设为 0 则禁用自动退出${RESET}"
     echo -e "    ${GREEN}-n <数量>${RESET}   设置显示的进程数量 (默认: 10)"
-    echo -e "    ${GREEN}-h${RESET}          显示本帮助信息"
+    echo -e "    ${GREEN}-h${RESET}           显示本帮助信息"
     echo ""
 
     echo -e "  ${BOLD}${WHITE}示例${RESET}"
@@ -172,25 +181,9 @@ show_help() {
     echo -e "    ${RED}红色${RESET}   占用过高，建议处理"
     echo ""
 
-    echo -e "  ${BOLD}${WHITE}空闲退出机制${RESET}"
-    echo -e "    程序会在每个输入节点等待用户操作"
-    echo -e "    超过设定时间无操作将自动退出，释放终端资源"
-    echo -e "    ${DIM}可通过 -t 0 完全禁用此行为${RESET}"
-    echo ""
-
-    echo -e "  ${BOLD}${WHITE}权限说明${RESET}"
-    echo -e "    ${DIM}普通用户${RESET}   只能终止自己创建的进程"
-    echo -e "    ${GREEN}sudo jc${RESET}    可以终止系统中的任何进程"
-    echo ""
-
     echo -e "  ${BOLD}${WHITE}卸载${RESET}"
     echo -e "    方式一: 在主菜单输入 ${GREEN}u${RESET}"
     echo -e "    方式二: ${CYAN}sudo rm -f ${JC_BIN}${RESET}"
-    echo -e "    方式三: ${CYAN}sudo bash install.sh --uninstall${RESET}"
-    echo ""
-
-    echo -e "  ${BOLD}${WHITE}安装${RESET}"
-    echo -e "    ${CYAN}sudo bash install.sh${RESET}"
     echo ""
 
     echo -e "${YELLOW}$(printf '─%.0s' $(seq 1 58))${RESET}"
@@ -201,14 +194,11 @@ show_help() {
 sys_summary() {
     local used_mem total_mem uptime_str load mem_pct usage
 
-    # CPU 使用率（0.5秒采样）
     usage=$(get_cpu_usage)
 
-    # 内存
     read -r total_mem used_mem _ <<< "$(free -m | awk '/Mem:/{print $2, $3}')"
     mem_pct=$(( used_mem * 100 / total_mem ))
 
-    # 运行时间 & 负载
     uptime_str=$(uptime -p 2>/dev/null || uptime | sed 's/.*up/up/' | sed 's/,.*//')
     load=$(awk '{printf "%s %s %s", $1, $2, $3}' /proc/loadavg 2>/dev/null || echo "N/A")
 
@@ -412,8 +402,6 @@ uninstall_success() {
     echo -e "  ${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo -e "  ${GREEN}  ✓  jc 已成功卸载${RESET}"
     echo -e "  ${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo ""
-    echo -e "  ${DIM}如需重新安装，请运行 install.sh${RESET}"
     echo ""
     exit 0
 }
