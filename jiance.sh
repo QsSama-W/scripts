@@ -150,7 +150,7 @@ show_help() {
 
     echo -e "  ${BOLD}${WHITE}交互快捷键${RESET}"
     echo -e "    ${GREEN}1${RESET}           查看内存占用 TOP 列表"
-    echo -e "    ${GREEN}2${RESET}           查看 CPU 占用 TOP 列表"
+    echo -e "    ${GREEN}2${RESET}           查看CPU 占用 TOP 列表"
     echo -e "    ${GREEN}h${RESET}           查看帮助"
     echo -e "    ${GREEN}r${RESET}           刷新页面"
     echo -e "    ${GREEN}u${RESET}           卸载 jc"
