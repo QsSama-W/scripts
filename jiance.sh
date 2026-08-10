@@ -489,7 +489,7 @@ main_loop() {
         echo -e "  ${BOLD}选择操作:${RESET}"
         echo ""
         echo -e "    ${GREEN}[1]${RESET} 内存占用 TOP ${SHOW_COUNT}"
-        echo -e "    ${CYAN}[2]${RESET} CPU  占用 TOP ${SHOW_COUNT}"
+        echo -e "    ${CYAN}[2]${RESET} CPU占用 TOP ${SHOW_COUNT}"
         echo -e "    ${WHITE}[h]${RESET} 帮助"
         echo -e "    ${DIM}[r]${RESET} 刷新"
         echo -e "    ${YELLOW}[u]${RESET} 卸载 jc"
