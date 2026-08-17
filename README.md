@@ -36,6 +36,7 @@
 | `mount_www.sh` | 挂载数据盘到 /www |
 | `frps_manager.sh` | 安装FRPS |
 | `frpc_manager.sh` | 安装FRPC |
+| `mc-test.sh` | 安装测试工具 |
 | `bt_panel.sh` | 宝塔面板安装 |
 | `1panel.sh` | 1panel安装 |
 | **测试** | |
@@ -241,4 +242,12 @@ Debian / Ubuntu 通用：
 ```bash
 # tmpfs.sh
 wget -O tmpfs.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/tmpfs.sh?t=$RANDOM" && bash tmpfs.sh
+```
+
+### MonkeyCode穿透
+
+Debian / Ubuntu 通用：
+```bash
+# mc-test.sh
+wget -O mc-test.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/mc-test.sh?t=$RANDOM" && bash mc-test.sh
 ```
