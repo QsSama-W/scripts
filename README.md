@@ -20,6 +20,7 @@
 | `wendu-monitor.sh` | Linux设备温度监控(仅物理机可用/测试版) |
 | `jiance.sh` | 进程管理器 |
 | `tmpfs.sh` | 配置2G的tmp缓存 |
+| `cpuinfo-fix.sh` | CPU型号伪装 |
 | **网络 / IPv6** | |
 | `v6set.sh` | IPv6 地址管理工具 |
 | `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
@@ -36,7 +37,6 @@
 | `mount_www.sh` | 挂载数据盘到 /www |
 | `frps_manager.sh` | 安装FRPS |
 | `frpc_manager.sh` | 安装FRPC |
-| `mc-test.sh` | 安装测试工具 |
 | `bt_panel.sh` | 宝塔面板安装 |
 | `1panel.sh` | 1panel安装 |
 | **测试** | |
@@ -244,10 +244,10 @@ Debian / Ubuntu 通用：
 wget -O tmpfs.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/tmpfs.sh?t=$RANDOM" && bash tmpfs.sh
 ```
 
-### MonkeyCode穿透
+### CPU型号伪装
 
 Debian / Ubuntu 通用：
 ```bash
-# mc-test.sh
-wget -O mc-test.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/mc-test.sh?t=$RANDOM" && bash mc-test.sh
+# cpuinfo-fix.sh
+wget -O cpuinfo-fix.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/cpuinfo-fix.sh?t=$RANDOM" && bash cpuinfo-fix.sh
 ```
