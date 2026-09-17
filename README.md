@@ -26,10 +26,7 @@
 | `v6dns.sh` | 纯V6机器自动配置NAT64 DNS |
 | `open_v6_port.sh` | LXC/LXD 开放 IPv6 端口 |
 | `throttle.sh` | 网络限速工具 |
-| **代理 / 隧道** | |
-| `install-singbox-lite.sh` | 安装 sing-box 多协议支持(禁止在中国大陆区域执行此脚本) |
-| `install-singbox-lite-SANs.sh` | 安装 sing-box 带 SANs 证书(禁止在中国大陆区域执行此脚本) |
-| `zzj-v2.sh` | Realm 端口转发管理(禁止在中国大陆区域执行此脚本) |
+| **转发 / 隧道** | |
 | `install_ddns_go.sh` | 安装/更新 DDNS-GO |
 | `cftun-setup.sh` | 安装CloudFlared Tunnel |
 | `cftun-uninstall.sh` | 卸载CloudFlared Tunnel |
@@ -73,20 +70,6 @@ wget -O hostname.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/hos
 wget -O install_ddns_go.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/install_ddns_go.sh?t=$RANDOM" && bash install_ddns_go.sh
 ```
 
-### 安装 sing-box（多协议版）
-
-支持 Shadowsocks / Hysteria2 / TUIC / VLESS Reality，需要 bash：
-```bash
-wget -O install-singbox-lite.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/install-singbox-lite.sh?t=$RANDOM" && bash install-singbox-lite.sh
-```
-
-### 安装 sing-box（带 SANs 版本）
-
-与上一版区别在于自签证书带 SANs 扩展，需要 bash：
-```bash
-wget -O install-singbox-lite-SANs.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/install-singbox-lite-SANs.sh?t=$RANDOM" && bash install-singbox-lite-SANs.sh
-```
-
 ### LXC/LXD 开放 IPv6 端口
 
 需要 bash：
@@ -99,13 +82,6 @@ wget -O open_v6_port.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main
 需要 bash：
 ```bash
 wget -O v6set.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/v6set.sh?t=$RANDOM" && bash v6set.sh
-```
-
-### Realm 端口转发
-
-需要 bash：
-```bash
-wget -O zzj-v2.sh "https://raw.githubusercontent.com/QsSama-W/scripts/main/zzj-v2.sh?t=$RANDOM" && bash zzj-v2.sh
 ```
 
 ### Debian 11 升级到 Debian 12
